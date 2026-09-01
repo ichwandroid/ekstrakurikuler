@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presensi QR Code</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg:        #0d0d14;
+      --surface:   #15151f;
+      --surface2:  #1c1c2a;
+      --lime:      #c8f731;
+      --lime-dark: #a8d020;
+      --white:     #ffffff;
+      --muted:     rgba(255,255,255,0.45);
+      --border:    rgba(255,255,255,0.08);
+      --danger:    #ff6b6b;
+      --warn:      #ffd166;
+    }
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--white);
+      overflow-x: hidden;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 110px;
+      min-height: 100vh;
+    }
+
+    /* ── APP CONTAINER ── */
+    .app-container {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      opacity: 0;
+    }
+    .topbar-greeting {
+      font-size: 0.78rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .topbar-title { font-size: 1.15rem; font-weight: 800; margin-top: 2px; }
+    .avatar {
+      width: 44px; height: 44px;
+      background: var(--lime);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      color: #0d0d14;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(200,247,49,0.25);
+    }
+
+    /* ── HERO BANNER ── */
+    .hero {
+      width: 100%;
+      background: var(--lime);
+      border-radius: 28px;
+      padding: 32px 28px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(20px);
+      box-shadow: 0 10px 30px rgba(200,247,49,0.2);
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      right: -20px; top: -30px;
+      width: 160px; height: 160px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 50%;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      right: 36px; top: 44px;
+      width: 84px; height: 84px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 50%;
+    }
+    .hero-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.5);
+      margin-bottom: 8px;
+    }
+    .hero-title {
+      font-size: 2.1rem;
+      font-weight: 900;
+      color: #0d0d14;
+      line-height: 1.12;
+      margin-bottom: 14px;
+    }
+    .hero-sub {
+      font-size: 0.82rem;
+      color: rgba(0,0,0,0.6);
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .hero-icon {
+      position: absolute;
+      right: 20px; bottom: 20px;
+      color: rgba(0,0,0,0.12);
+      pointer-events: none;
+    }
+
+    /* ── FORM SECTION ── */
+    .form-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .section-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-title { font-size: 1rem; font-weight: 700; }
+    .section-badge {
+      background: var(--surface2);
+      color: var(--lime);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 50px;
+      border: 1px solid rgba(200,247,49,0.2);
+    }
+
+    /* ── SELECT USER DROPDOWN ── */
+    .dropdown-wrapper {
+      position: relative;
+      width: 100%;
+      margin-bottom: 14px;
+      opacity: 0;
+    }
+    .custom-select {
+      width: 100%;
+      padding: 18px 48px 18px 50px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--white);
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .custom-select:focus {
+      border-color: var(--lime);
+      box-shadow: 0 0 0 3px rgba(200,247,49,0.2), 0 8px 24px rgba(0,0,0,0.4);
+      background: var(--surface2);
+    }
+    .select-icon-left {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--lime);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+    .select-icon-right {
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+    .custom-select:focus ~ .select-icon-right {
+      transform: translateY(-50%) rotate(180deg);
+      color: var(--lime);
+    }
+    .custom-select option {
+      background: #15151f;
+      color: #ffffff;
+      padding: 12px;
+    }
+
+    /* ── SELECTED USER PREVIEW ── */
+    .selected-preview {
+      display: none;
+      width: 100%;
+      margin-bottom: 14px;
+      padding: 14px 16px;
+      background: rgba(200,247,49,0.06);
+      border: 1px solid rgba(200,247,49,0.25);
+      border-radius: 18px;
+      align-items: center;
+      gap: 12px;
+    }
+    .selected-preview.show {
+      display: flex;
+    }
+    .preview-avatar {
+      width: 38px;
+      height: 38px;
+      background: rgba(200,247,49,0.18);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--lime);
+      flex-shrink: 0;
+    }
+    .preview-meta {
+      flex: 1;
+      min-width: 0;
+    }
+    .preview-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--white);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preview-role {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .preview-status {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--lime);
+      background: rgba(200,247,49,0.14);
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── GENERATE BUTTON ── */
+    .btn-generate {
+      width: 100%;
+      padding: 18px;
+      background: var(--lime);
+      border: none;
+      border-radius: 20px;
+      color: #0d0d14;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      box-shadow: 0 8px 24px rgba(200,247,49,0.25);
+      margin-top: 6px;
+      margin-bottom: 12px;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-generate:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(200,247,49,0.35); }
+    .btn-generate:active:not(:disabled) { transform: translateY(0); }
+    .btn-generate:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── QR RESULT SCREEN ── */
+    .qr-screen {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+    }
+    .qr-screen.visible { display: flex; }
+
+    .qr-card {
+      width: 100%;
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 28px 24px;
+      border: 1px solid var(--border);
+      text-align: center;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .qr-tag {
+      display: inline-block;
+      background: rgba(200,247,49,0.12);
+      color: var(--lime);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 5px 14px;
+      border-radius: 50px;
+      border: 1px solid rgba(200,247,49,0.25);
+      margin-bottom: 16px;
+    }
+    .qr-user-name { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .qr-user-role { font-size: 0.82rem; color: var(--muted); margin-bottom: 24px; }
+    .qr-box {
+      display: inline-block;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 0 0 6px rgba(200,247,49,0.15), 0 0 40px rgba(200,247,49,0.1);
+      margin-bottom: 24px;
+    }
+    .countdown-bar-wrap {
+      margin-bottom: 10px;
+    }
+    .countdown-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .countdown-label-sm {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .countdown-value {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--lime);
+      font-variant-numeric: tabular-nums;
+    }
+    .countdown-value.warn { color: var(--warn); }
+    .countdown-value.danger { color: var(--danger); }
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--lime);
+      border-radius: 999px;
+      transition: width 1s linear, background 0.3s;
+    }
+    .progress-fill.warn { background: var(--warn); }
+    .progress-fill.danger { background: var(--danger); }
+
+    .btn-regen {
+      width: 100%;
+      padding: 16px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      color: var(--white);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-regen:hover { border-color: var(--lime); background: rgba(200,247,49,0.05); }
+
+    /* ── ALERT ── */
+    .alert-box {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(255,107,107,0.12);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 16px;
+      color: #ff9a9a;
+      font-size: 0.88rem;
+      display: none;
+      margin-bottom: 12px;
+    }
+    .alert-box.show {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── HINT ── */
+    .hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 0 16px;
+      margin-top: 4px;
+      line-height: 1.6;
+    }
+
+    /* ── FLOATING FIXED BOTTOM DOCK ── */
+    .dock-container {
+      position: fixed;
+      bottom: 24px;
+      left: 0;
+      right: 0;
+      margin-left: auto;
+      margin-right: auto;
+      width: calc(100% - 48px);
+      max-width: 360px;
+      background: rgba(22, 22, 34, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 50px;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      z-index: 999;
+      opacity: 0;
+    }
+    .dock-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      color: var(--muted);
+      text-decoration: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .dock-item:hover {
+      color: var(--white);
+      transform: translateY(-3px);
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .dock-item.active {
+      color: var(--lime);
+      background: rgba(200, 247, 49, 0.12);
+    }
+    .dock-item.active::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 6px var(--lime);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- TOP BAR -->
+    <div class="topbar" id="topbar">
+      <div>
+        <div class="topbar-greeting">Selamat Datang <i data-lucide="sparkles" style="width:14px;height:14px;color:var(--lime);"></i></div>
+        <div class="topbar-title">Presensi Digital</div>
+      </div>
+      <div class="avatar">
+        <i data-lucide="clipboard-check" style="width:22px;height:22px;"></i>
+      </div>
+    </div>
+
+    <!-- HERO BANNER -->
+    <div class="hero" id="hero">
+      <div class="hero-label">Sistem Absensi</div>
+      <div class="hero-title">Siap<br>Hadir?</div>
+      <div class="hero-sub">Pilih nama Anda &amp; generate<br>QR Code untuk absensi.</div>
+      <div class="hero-icon">
+        <i data-lucide="zap" style="width:80px;height:80px;"></i>
+      </div>
+    </div>
+
+    <!-- FORM SECTION -->
+    <div class="form-section" id="formSection">
+      <div class="section-header">
+        <span class="section-title">Pilih Peserta</span>
+        <span class="section-badge" id="countBadge">Memuat...</span>
+      </div>
+
+      <div class="dropdown-wrapper" id="dropdownWrapper">
+        <div class="select-icon-left">
+          <i data-lucide="user" style="width:18px;height:18px;"></i>
+        </div>
+        <select id="userDropdown" class="custom-select" onchange="onUserSelectChange()">
+          <option value="">-- Pilih Nama Peserta --</option>
+        </select>
+        <div class="select-icon-right">
+          <i data-lucide="chevron-down" style="width:18px;height:18px;"></i>
+        </div>
+      </div>
+
+      <div class="selected-preview" id="selectedPreview">
+        <div class="preview-avatar">
+          <i data-lucide="check" style="width:18px;height:18px;"></i>
+        </div>
+        <div class="preview-meta">
+          <div class="preview-name" id="previewName">-</div>
+          <div class="preview-role" id="previewRole">-</div>
+        </div>
+        <span class="preview-status">Terpilih</span>
+      </div>
+
+      <div class="alert-box" id="alertBox"></div>
+
+      <button class="btn-generate" id="btnGenerate" disabled onclick="generateQR()">
+        <i data-lucide="qr-code" style="width:18px;height:18px;"></i>
+        <span>Generate QR Code</span>
+      </button>
+      <p class="hint">Tunjukkan QR Code kepada Admin untuk dipindai</p>
+    </div>
+
+    <!-- QR RESULT SCREEN -->
+    <div class="qr-screen" id="qrScreen">
+      <div class="qr-card" id="qrCard">
+        <div class="qr-tag">QR Code Presensi</div>
+        <div class="qr-user-name" id="qrName">—</div>
+        <div class="qr-user-role" id="qrRole">—</div>
+        <div class="qr-box">
+          <div id="qrcode"></div>
+        </div>
+        <div class="countdown-bar-wrap">
+          <div class="countdown-top">
+            <span class="countdown-label-sm">
+              <i data-lucide="clock" style="width:14px;height:14px;"></i>
+              Berlaku selama
+            </span>
+            <span class="countdown-value" id="countdownVal">05:00</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width:100%"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-regen" onclick="backToForm()">
+        <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
+        <span>Pilih Peserta Lain</span>
+      </button>
+      <p class="hint" style="margin-top:16px;">QR Code kedaluwarsa dalam 5 menit.<br>Minta Admin untuk segera memindai.</p>
+    </div>
+
+    <!-- FLOATING BOTTOM DOCK -->
+    <div class="dock-container" id="bottomDock">
+      <a href="#" class="dock-item active" title="Beranda" onclick="event.preventDefault(); setActiveDock(this);">
+        <i data-lucide="rocket" style="width:20px;height:20px;"></i>
+      </a>
+      <a href="#" class="dock-item" title="Kotak Masuk" onclick="event.preventDefault(); setActiveDock(this);">
+        <i data-lucide="inbox" style="width:20px;height:20px;"></i>
+      </a>
+      <a href="#" class="dock-item" title="Aktivitas" onclick="event.preventDefault(); setActiveDock(this);">
+        <i data-lucide="network" style="width:20px;height:20px;"></i>
+      </a>
+      <a href="#" class="dock-item" title="Modul" onclick="event.preventDefault(); setActiveDock(this);">
+        <i data-lucide="package" style="width:20px;height:20px;"></i>
+      </a>
+      <a href="#" class="dock-item" title="Statistik" onclick="event.preventDefault(); setActiveDock(this);">
+        <i data-lucide="trending-up" style="width:20px;height:20px;"></i>
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    let selectedUser  = null;
+    let countdownInt  = null;
+    let totalSec      = 300;
+    let remainingSec  = 300;
+
+    lucide.createIcons();
+
+    // ─── Entrance animation ───────────────────────────────────────
+    anime.timeline({ easing: 'easeOutExpo' })
+      .add({ targets: '#topbar', opacity:[0,1], translateY:[-16,0], duration:500 })
+      .add({ targets: '#hero',   opacity:[0,1], translateY:[20,0],  duration:600 }, '-=300')
+      .add({ targets: '#dropdownWrapper, .btn-generate', opacity:[0,1], translateY:[16,0], duration:500, delay: anime.stagger(80) }, '-=300')
+      .add({ targets: '#bottomDock', opacity:[0,1], translateY:[20,0], duration:600 }, '-=200');
+
+    // ─── Load users ───────────────────────────────────────────────
+    google.script.run
+      .withSuccessHandler(onUsersLoaded)
+      .withFailureHandler(onLoadError)
+      .getUserList();
+
+    function onUsersLoaded(users) {
+      const dropdown = document.getElementById('userDropdown');
+      dropdown.innerHTML = '<option value="">-- Pilih Nama Peserta --</option>';
+
+      if (!users || users.length === 0) {
+        showAlert('Tidak ada peserta aktif ditemukan.');
+        document.getElementById('countBadge').textContent = '0 Peserta';
+        return;
+      }
+
+      document.getElementById('countBadge').textContent = users.length + ' Peserta';
+
+      users.forEach(function(u) {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify(u);
+        opt.textContent = u.nama + (u.jabatan ? ' — ' + u.jabatan : '');
+        dropdown.appendChild(opt);
+      });
+
+      lucide.createIcons();
+    }
+
+    function onLoadError(err) {
+      showAlert('Gagal memuat data: ' + (err.message || err));
+    }
+
+    function onUserSelectChange() {
+      const dropdown = document.getElementById('userDropdown');
+      const val = dropdown.value;
+      const preview = document.getElementById('selectedPreview');
+      const btn = document.getElementById('btnGenerate');
+      const alertBox = document.getElementById('alertBox');
+
+      if (!val) {
+        selectedUser = null;
+        btn.disabled = true;
+        preview.classList.remove('show');
+        return;
+      }
+
+      selectedUser = JSON.parse(val);
+      btn.disabled = false;
+      alertBox.classList.remove('show');
+
+      document.getElementById('previewName').textContent = selectedUser.nama;
+      document.getElementById('previewRole').textContent = selectedUser.jabatan || 'Peserta';
+      preview.classList.add('show');
+
+      lucide.createIcons();
+
+      anime({ targets: '#selectedPreview', opacity:[0,1], scale:[0.96,1], duration:300, easing:'easeOutQuad' });
+    }
+
+    function setActiveDock(el) {
+      document.querySelectorAll('.dock-item').forEach(function(item) { item.classList.remove('active'); });
+      el.classList.add('active');
+    }
+
+    // ─── Generate QR ──────────────────────────────────────────────
+    function generateQR() {
+      if (!selectedUser) return;
+
+      const payload = JSON.stringify({
+        id:        selectedUser.id,
+        nama:      selectedUser.nama,
+        jabatan:   selectedUser.jabatan,
+        token:     Math.random().toString(36).substr(2,16).toUpperCase(),
+        timestamp: new Date().toISOString()
+      });
+
+      document.getElementById('qrName').textContent  = selectedUser.nama;
+      document.getElementById('qrRole').textContent  = selectedUser.jabatan || 'Peserta';
+
+      const qrDiv = document.getElementById('qrcode');
+      qrDiv.innerHTML = '';
+      new QRCode(qrDiv, { text: payload, width:192, height:192, colorDark:'#0d0d14', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.H });
+
+      // Switch screens
+      document.getElementById('formSection').style.display  = 'none';
+      const qrScreen = document.getElementById('qrScreen');
+      qrScreen.classList.add('visible');
+
+      lucide.createIcons();
+
+      anime({ targets: '#qrCard', opacity:[0,1], scale:[0.92,1], duration:600, easing:'easeOutBack' });
+      anime({ targets: '.btn-regen', opacity:[0,1], translateY:[10,0], duration:400, delay:200, easing:'easeOutQuad' });
+
+      // Countdown
+      if (countdownInt) clearInterval(countdownInt);
+      remainingSec = totalSec = 300;
+      updateCountdown();
+      countdownInt = setInterval(function() {
+        remainingSec--;
+        updateCountdown();
+        if (remainingSec <= 0) { clearInterval(countdownInt); onExpired(); }
+      }, 1000);
+    }
+
+    function updateCountdown() {
+      const m = Math.floor(remainingSec / 60).toString().padStart(2,'0');
+      const s = (remainingSec % 60).toString().padStart(2,'0');
+      const pct = (remainingSec / totalSec * 100).toFixed(2);
+      const valEl  = document.getElementById('countdownVal');
+      const fillEl = document.getElementById('progressFill');
+
+      valEl.textContent = m + ':' + s;
+      fillEl.style.width = pct + '%';
+
+      const cls = remainingSec <= 30 ? 'danger' : remainingSec <= 60 ? 'warn' : '';
+      valEl.className  = 'countdown-value ' + cls;
+      fillEl.className = 'progress-fill '   + cls;
+    }
+
+    function onExpired() {
+      anime({
+        targets: '#qrCard',
+        opacity: [1, 0.25],
+        duration: 600,
+        easing: 'easeOutQuad',
+        complete: function() {
+          backToForm();
+          showAlert('QR Code telah kedaluwarsa. Silakan generate ulang.');
+        }
+      });
+    }
+
+    function backToForm() {
+      if (countdownInt) clearInterval(countdownInt);
+      document.getElementById('qrScreen').classList.remove('visible');
+      document.getElementById('formSection').style.display = 'flex';
+      lucide.createIcons();
+    }
+
+    function showAlert(msg) {
+      const el = document.getElementById('alertBox');
+      el.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;flex-shrink:0;"></i><span>' + msg + '</span>';
+      el.classList.add('show');
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>
