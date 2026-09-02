@@ -31,6 +31,26 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // <-- Tambahkan di sini juga
 }
 
+// Endpoint untuk scanner eksternal. Responsnya tidak dibaca oleh browser
+// eksternal (mode no-cors), namun validasi dan pencatatan tetap dilakukan server.
+function doPost(e) {
+  let request;
+  try {
+    request = JSON.parse(e.postData.contents);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Format request tidak valid.'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const result = request.action === 'recordPresensi'
+    ? recordPresensi(request.payload)
+    : { success: false, message: 'Aksi tidak dikenali.' };
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function getUserList() {
   try {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
@@ -50,6 +70,33 @@ function getUserList() {
   } catch (error) {
     Logger.log('Error di getUserList: ' + error.toString());
     throw error;
+  }
+}
+
+function getTodayPresensi() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME_LOG);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+
+    const timeZone = Session.getScriptTimeZone();
+    const today = Utilities.formatDate(new Date(), timeZone, 'yyyy-MM-dd');
+    return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues()
+      .filter(function(row) {
+        return Utilities.formatDate(new Date(row[0]), timeZone, 'yyyy-MM-dd') === today;
+      })
+      .reverse()
+      .slice(0, 20)
+      .map(function(row) {
+        return {
+          name: String(row[2] || '-'),
+          ok: String(row[3]).toLowerCase() === 'hadir',
+          desc: String(row[3] || 'Presensi'),
+          time: Utilities.formatDate(new Date(row[0]), timeZone, 'HH:mm')
+        };
+      });
+  } catch (error) {
+    Logger.log('Error di getTodayPresensi: ' + error.toString());
+    return [];
   }
 }
 

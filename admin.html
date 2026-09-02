@@ -307,6 +307,8 @@
     const scanLog   = [];
 
     lucide.createIcons();
+    loadTodayLog();
+    setInterval(loadTodayLog, 15000);
 
     // Entrance
     anime.timeline({ easing:'easeOutExpo' })
@@ -323,6 +325,17 @@
     function navigateTo(e, page) {
       e.preventDefault();
       window.top.location.href = e.currentTarget.href;
+    }
+
+    function loadTodayLog() {
+      google.script.run
+        .withSuccessHandler(function(logs) {
+          scanLog.splice(0, scanLog.length);
+          Array.prototype.push.apply(scanLog, logs || []);
+          renderLog();
+        })
+        .withFailureHandler(function() {})
+        .getTodayPresensi();
     }
 
     function openExternalScanner() {
@@ -466,7 +479,7 @@
           '<div class="result-row"><span class="result-key">Jabatan</span><span class="result-val">' + (d.jabatan||'-') + '</span></div>' +
           '<div class="result-row"><span class="result-key">Waktu</span><span class="result-val">' + d.waktu + '</span></div>' +
           '<div class="result-row"><span class="result-key">Status</span><span class="result-val" style="color:var(--lime)">' + d.status + '</span></div>';
-        addToLog(d.nama, true, d.jabatan);
+        loadTodayLog();
       } else {
         iconEl.className = 'result-icon-circle err';
         iconEl.innerHTML = '<i data-lucide="x" style="width:48px;height:48px;"></i>';
