@@ -11,11 +11,13 @@ function doGet(e) {
   if (page === 'admin') {
     return HtmlService.createHtmlOutputFromFile('admin')
       .setTitle('Admin Scanner - Aplikasi Presensi')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Aplikasi Presensi QR Code')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // <-- Tambahkan di sini juga
 }
 
 function getUserList() {
