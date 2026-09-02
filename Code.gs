@@ -5,6 +5,8 @@
 
 const SHEET_NAME_USER = 'Data_User';
 const SHEET_NAME_LOG  = 'Log_Presensi';
+const SHEET_NAME_JOURNAL = 'Jurnal_Kegiatan';
+const JOURNAL_PHOTO_FOLDER_ID = '12VbH_aeHsBicV0anaqhXJJElHY6RZiuu';
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
@@ -119,4 +121,25 @@ function recordPresensi(qrPayload) {
     Logger.log('Error di recordPresensi: ' + error.toString());
     return { success: false, message: 'Terjadi kesalahan server: ' + error.toString() };
   }
+}
+
+function saveJournal(journal) {
+  if (!journal || !journal.tanggal || !journal.user || !journal.kegiatan || !journal.photoData) {
+    throw new Error('Tanggal, nama, kegiatan, dan foto wajib diisi.');
+  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME_JOURNAL);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME_JOURNAL);
+    sheet.appendRow(['Waktu Simpan', 'Tanggal Kegiatan', 'ID Peserta', 'Nama', 'Jabatan', 'Kegiatan', 'Keterangan', 'Foto']);
+  }
+  const imageData = journal.photoData.split(',')[1];
+  const blob = Utilities.newBlob(Utilities.base64Decode(imageData), journal.photoType || 'image/jpeg', journal.photoName || 'foto.jpg');
+  const parentFolder = DriveApp.getFolderById(JOURNAL_PHOTO_FOLDER_ID);
+  const dateFolderName = String(journal.tanggal);
+  const dateFolders = parentFolder.getFoldersByName(dateFolderName);
+  const photoFolder = dateFolders.hasNext() ? dateFolders.next() : parentFolder.createFolder(dateFolderName);
+  const photo = photoFolder.createFile(blob);
+  sheet.appendRow([new Date(), journal.tanggal, journal.user.id || '', journal.user.nama || '', journal.user.jabatan || '', journal.kegiatan, journal.keterangan || '', photo.getUrl()]);
+  return { success: true, message: 'Jurnal berhasil disimpan.' };
 }

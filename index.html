@@ -517,6 +517,21 @@
     }
     .attendance-value { color: var(--lime); font-size: 1.25rem; font-weight: 800; }
     .attendance-label { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
+    .journal-field { margin-bottom: 14px; }
+    .journal-label { display:block; margin:0 0 7px; color:var(--muted); font-size:0.75rem; font-weight:700; }
+    .journal-input, .journal-textarea {
+      width:100%; border:1px solid var(--border); border-radius:14px; background:var(--surface2);
+      color:var(--white); padding:13px; font:inherit; font-size:0.86rem; outline:none;
+    }
+    .journal-input:focus, .journal-textarea:focus { border-color:var(--lime); }
+    .journal-textarea { min-height:92px; resize:vertical; }
+    .journal-photo { border:1px dashed rgba(200,247,49,.45); border-radius:14px; padding:12px; color:var(--muted); font-size:0.78rem; }
+    .journal-preview { display:none; width:100%; max-height:180px; object-fit:cover; margin-top:10px; border-radius:12px; }
+    .journal-preview.show { display:block; }
+    .journal-submit { width:100%; border:0; border-radius:15px; padding:15px; background:var(--lime); color:#0d0d14; font:inherit; font-weight:800; cursor:pointer; }
+    .journal-message { display:none; margin-top:12px; padding:11px; border-radius:12px; font-size:0.78rem; }
+    .journal-message.show { display:block; background:rgba(200,247,49,.12); color:var(--lime); }
+    .journal-message.error { background:rgba(255,107,107,.12); color:#ff9a9a; }
 
     /* ── FLOATING FIXED BOTTOM DOCK ── */
     .dock-container {
@@ -700,29 +715,37 @@
 
     <section class="app-view page-section" id="modul">
       <div class="page-section-header">
-        <div class="page-section-icon"><i data-lucide="package" style="width:18px;height:18px;"></i></div>
+        <div class="page-section-icon"><i data-lucide="notebook-pen" style="width:18px;height:18px;"></i></div>
         <div>
-          <div class="page-section-title">Modul</div>
-          <div class="page-section-subtitle">Fitur yang tersedia di aplikasi</div>
+          <div class="page-section-title">Form Jurnal</div>
+          <div class="page-section-subtitle">Catat kegiatan ekstrakurikuler</div>
         </div>
       </div>
-      <div class="menu-card">
-        <div class="module-item">
-          <div class="menu-item-icon"><i data-lucide="qr-code" style="width:18px;height:18px;"></i></div>
-          <div class="menu-item-copy"><div class="menu-item-title">QR Presensi</div><div class="menu-item-desc">Membuat kode unik untuk tiap peserta.</div></div>
-          <span class="module-status">Aktif</span>
+      <form class="menu-card" id="journalForm" onsubmit="submitJournal(event)">
+        <div class="journal-field">
+          <label class="journal-label" for="journalDate">Tanggal kegiatan *</label>
+          <input class="journal-input" id="journalDate" type="date" required>
         </div>
-        <div class="module-item">
-          <div class="menu-item-icon"><i data-lucide="camera" style="width:18px;height:18px;"></i></div>
-          <div class="menu-item-copy"><div class="menu-item-title">Scanner Admin</div><div class="menu-item-desc">Akses melalui menu scanner pada dock.</div></div>
-          <span class="module-status">Aktif</span>
+        <div class="journal-field">
+          <label class="journal-label" for="journalUser">Nama peserta *</label>
+          <select class="journal-input" id="journalUser" required><option value="">-- Pilih nama peserta --</option></select>
         </div>
-        <div class="module-item">
-          <div class="menu-item-icon"><i data-lucide="shield-check" style="width:18px;height:18px;"></i></div>
-          <div class="menu-item-copy"><div class="menu-item-title">Validasi waktu</div><div class="menu-item-desc">QR otomatis ditolak setelah masa berlaku habis.</div></div>
-          <span class="module-status">Aktif</span>
+        <div class="journal-field">
+          <label class="journal-label" for="journalActivity">Kegiatan *</label>
+          <textarea class="journal-textarea" id="journalActivity" placeholder="Contoh: Latihan rutin sepak bola" required></textarea>
         </div>
-      </div>
+        <div class="journal-field">
+          <label class="journal-label" for="journalNote">Keterangan <span style="font-weight:400;">(opsional)</span></label>
+          <textarea class="journal-textarea" id="journalNote" placeholder="Catatan tambahan kegiatan"></textarea>
+        </div>
+        <div class="journal-field">
+          <label class="journal-label" for="journalPhoto">Foto kegiatan *</label>
+          <input class="journal-photo" id="journalPhoto" type="file" accept="image/*" required onchange="previewJournalPhoto(event)">
+          <img class="journal-preview" id="journalPreview" alt="Preview foto kegiatan">
+        </div>
+        <button class="journal-submit" id="journalSubmit" type="submit">Simpan Jurnal</button>
+        <div class="journal-message" id="journalMessage"></div>
+      </form>
     </section>
 
     <section class="app-view page-section" id="absensi-siswa">
@@ -786,7 +809,9 @@
 
     function onUsersLoaded(users) {
       const dropdown = document.getElementById('userDropdown');
+      const journalUser = document.getElementById('journalUser');
       dropdown.innerHTML = '<option value="">-- Pilih Nama Peserta --</option>';
+      journalUser.innerHTML = '<option value="">-- Pilih nama peserta --</option>';
 
       if (!users || users.length === 0) {
         showAlert('Tidak ada peserta aktif ditemukan.');
@@ -802,9 +827,30 @@
         opt.value = JSON.stringify(u);
         opt.textContent = u.nama + (u.jabatan ? ' — ' + u.jabatan : '');
         dropdown.appendChild(opt);
+        journalUser.appendChild(opt.cloneNode(true));
       });
 
       lucide.createIcons();
+    }
+
+    document.getElementById('journalDate').value = new Date().toISOString().slice(0, 10);
+    function previewJournalPhoto(e) {
+      const file = e.target.files[0], preview = document.getElementById('journalPreview');
+      if (file) { preview.src = URL.createObjectURL(file); preview.classList.add('show'); }
+    }
+    function submitJournal(e) {
+      e.preventDefault();
+      const file = document.getElementById('journalPhoto').files[0], button = document.getElementById('journalSubmit'), message = document.getElementById('journalMessage'), reader = new FileReader();
+      button.disabled = true; button.textContent = 'Menyimpan...';
+      reader.onload = function() {
+        google.script.run.withSuccessHandler(function(r) {
+          button.disabled = false; button.textContent = 'Simpan Jurnal'; message.textContent = r.message; message.className = 'journal-message show';
+          document.getElementById('journalForm').reset(); document.getElementById('journalDate').value = new Date().toISOString().slice(0,10); document.getElementById('journalPreview').classList.remove('show');
+        }).withFailureHandler(function(err) {
+          button.disabled = false; button.textContent = 'Simpan Jurnal'; message.textContent = 'Gagal menyimpan: ' + (err.message || err); message.className = 'journal-message show error';
+        }).saveJournal({ tanggal:document.getElementById('journalDate').value, user:JSON.parse(document.getElementById('journalUser').value), kegiatan:document.getElementById('journalActivity').value.trim(), keterangan:document.getElementById('journalNote').value.trim(), photoData:reader.result, photoName:file.name, photoType:file.type });
+      };
+      reader.readAsDataURL(file);
     }
 
     function onLoadError(err) {
