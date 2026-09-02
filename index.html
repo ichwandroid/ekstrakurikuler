@@ -856,11 +856,6 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function navigateTo(e, page) {
-      e.preventDefault();
-      window.top.location.href = e.currentTarget.href;
-    }
-
     // ─── Generate QR ──────────────────────────────────────────────
     function generateQR() {
       if (!selectedUser) return;

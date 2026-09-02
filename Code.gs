@@ -5,30 +5,12 @@
 
 const SHEET_NAME_USER = 'Data_User';
 const SHEET_NAME_LOG  = 'Log_Presensi';
-const EXTERNAL_SCANNER_URL = 'https://ichwandroid.github.io/absensi-ekstra/scanner.html';
-const EXTERNAL_SCANNER_ORIGIN = 'https://ichwandroid.github.io';
 
-function doGet(e) {
-  const page = e && e.parameter ? e.parameter.page : '';
-  const fileName = page === 'admin' ? 'admin' : 'index';
-
-  // Gunakan template agar URL deployment dapat dipasang ke halaman. URL relatif
-  // dari HtmlService mengarah ke iframe googleusercontent, bukan ke Web App.
-  const template = HtmlService.createTemplateFromFile(fileName);
-  template.webAppUrl = ScriptApp.getService().getUrl();
-  template.externalScannerUrl = EXTERNAL_SCANNER_URL;
-  template.externalScannerOrigin = EXTERNAL_SCANNER_ORIGIN;
-
-  if (page === 'admin') {
-    return template.evaluate()
-      .setTitle('Admin Scanner - Aplikasi Presensi')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-  return template.evaluate()
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Aplikasi Presensi QR Code')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // <-- Tambahkan di sini juga
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 // Endpoint untuk scanner eksternal. Responsnya tidak dibaca oleh browser
