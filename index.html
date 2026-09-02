@@ -425,6 +425,99 @@
       line-height: 1.6;
     }
 
+    /* ─── SINGLE-PAGE MENU SECTIONS ─── */
+    .app-view {
+      display: none;
+      width: 100%;
+    }
+    .app-view.active {
+      display: block;
+      animation: viewEnter 0.28s ease-out;
+    }
+    @keyframes viewEnter {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .page-section {
+      width: 100%;
+    }
+    .page-section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .page-section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--lime);
+      background: rgba(200,247,49,0.12);
+    }
+    .page-section-title { font-size: 1rem; font-weight: 800; }
+    .page-section-subtitle { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .menu-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .activity-item, .module-item, .attendance-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .activity-item:last-child, .module-item:last-child, .attendance-row:last-child { border-bottom: none; }
+    .menu-item-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--lime);
+      background: rgba(200,247,49,0.1);
+    }
+    .menu-item-copy { flex: 1; min-width: 0; }
+    .menu-item-title { font-size: 0.86rem; font-weight: 700; }
+    .menu-item-desc { font-size: 0.75rem; color: var(--muted); line-height: 1.45; margin-top: 3px; }
+    .menu-item-meta {
+      color: var(--lime);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .module-status {
+      color: var(--lime);
+      background: rgba(200,247,49,0.12);
+      border-radius: 50px;
+      padding: 4px 9px;
+      font-size: 0.67rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .attendance-total {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .attendance-stat {
+      border-radius: 14px;
+      background: var(--surface2);
+      padding: 14px;
+    }
+    .attendance-value { color: var(--lime); font-size: 1.25rem; font-weight: 800; }
+    .attendance-label { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
+
     /* ── FLOATING FIXED BOTTOM DOCK ── */
     .dock-container {
       position: fixed;
@@ -497,6 +590,7 @@
       </div>
     </div>
 
+    <div class="app-view active" id="presensi">
     <!-- HERO BANNER -->
     <div class="hero" id="hero">
       <div class="hero-label">Sistem Absensi</div>
@@ -575,22 +669,97 @@
       </button>
       <p class="hint" style="margin-top:16px;">QR Code kedaluwarsa dalam 5 menit.<br>Minta Admin untuk segera memindai.</p>
     </div>
+    </div>
+
+    <section class="app-view page-section" id="aktivitas">
+      <div class="page-section-header">
+        <div class="page-section-icon"><i data-lucide="network" style="width:18px;height:18px;"></i></div>
+        <div>
+          <div class="page-section-title">Aktivitas</div>
+          <div class="page-section-subtitle">Alur penggunaan presensi</div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="activity-item">
+          <div class="menu-item-icon"><i data-lucide="user-check" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">Pilih peserta</div><div class="menu-item-desc">Pilih nama peserta aktif dari daftar di atas.</div></div>
+          <span class="menu-item-meta">1</span>
+        </div>
+        <div class="activity-item">
+          <div class="menu-item-icon"><i data-lucide="qr-code" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">Generate QR Code</div><div class="menu-item-desc">QR Code berlaku selama lima menit.</div></div>
+          <span class="menu-item-meta">2</span>
+        </div>
+        <div class="activity-item">
+          <div class="menu-item-icon"><i data-lucide="scan-line" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">Scan oleh admin</div><div class="menu-item-desc">Admin memindai QR untuk mencatat kehadiran.</div></div>
+          <span class="menu-item-meta">3</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-view page-section" id="modul">
+      <div class="page-section-header">
+        <div class="page-section-icon"><i data-lucide="package" style="width:18px;height:18px;"></i></div>
+        <div>
+          <div class="page-section-title">Modul</div>
+          <div class="page-section-subtitle">Fitur yang tersedia di aplikasi</div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="module-item">
+          <div class="menu-item-icon"><i data-lucide="qr-code" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">QR Presensi</div><div class="menu-item-desc">Membuat kode unik untuk tiap peserta.</div></div>
+          <span class="module-status">Aktif</span>
+        </div>
+        <div class="module-item">
+          <div class="menu-item-icon"><i data-lucide="camera" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">Scanner Admin</div><div class="menu-item-desc">Akses melalui menu scanner pada dock.</div></div>
+          <span class="module-status">Aktif</span>
+        </div>
+        <div class="module-item">
+          <div class="menu-item-icon"><i data-lucide="shield-check" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">Validasi waktu</div><div class="menu-item-desc">QR otomatis ditolak setelah masa berlaku habis.</div></div>
+          <span class="module-status">Aktif</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="app-view page-section" id="absensi-siswa">
+      <div class="page-section-header">
+        <div class="page-section-icon"><i data-lucide="trending-up" style="width:18px;height:18px;"></i></div>
+        <div>
+          <div class="page-section-title">Absensi Siswa</div>
+          <div class="page-section-subtitle">Ringkasan kehadiran hari ini</div>
+        </div>
+      </div>
+      <div class="menu-card">
+        <div class="attendance-total">
+          <div class="attendance-stat"><div class="attendance-value" id="attendanceParticipantCount">-</div><div class="attendance-label">Peserta aktif</div></div>
+          <div class="attendance-stat"><div class="attendance-value">5 mnt</div><div class="attendance-label">Masa berlaku QR</div></div>
+        </div>
+        <div class="attendance-row">
+          <div class="menu-item-icon"><i data-lucide="circle-check" style="width:18px;height:18px;"></i></div>
+          <div class="menu-item-copy"><div class="menu-item-title">Cara melihat kehadiran</div><div class="menu-item-desc">Riwayat scan ditampilkan pada halaman Scanner Admin.</div></div>
+        </div>
+      </div>
+    </section>
 
     <!-- FLOATING BOTTOM DOCK -->
     <div class="dock-container" id="bottomDock">
-      <a href="?" target="_top" class="dock-item active" title="Presensi Peserta" onclick="navigateTo(event, '')">
+      <a href="#presensi" class="dock-item active" title="Presensi Peserta" data-section="presensi" onclick="showView(event, 'presensi')">
         <i data-lucide="rocket" style="width:20px;height:20px;"></i>
       </a>
-      <a href="?page=admin" target="_top" class="dock-item" title="Admin Scanner" onclick="navigateTo(event, 'admin')">
+      <a href="<?= webAppUrl ?>?page=admin" target="_top" class="dock-item" title="Admin Scanner" onclick="navigateTo(event, 'admin')">
         <i data-lucide="scan-line" style="width:20px;height:20px;"></i>
       </a>
-      <a href="#" class="dock-item" title="Aktivitas" onclick="event.preventDefault(); setActiveDock(this);">
+      <a href="#aktivitas" class="dock-item" title="Aktivitas" data-section="aktivitas" onclick="showView(event, 'aktivitas')">
         <i data-lucide="network" style="width:20px;height:20px;"></i>
       </a>
-      <a href="#" class="dock-item" title="Modul" onclick="event.preventDefault(); setActiveDock(this);">
+      <a href="#modul" class="dock-item" title="Modul" data-section="modul" onclick="showView(event, 'modul')">
         <i data-lucide="package" style="width:20px;height:20px;"></i>
       </a>
-      <a href="#" class="dock-item" title="Statistik" onclick="event.preventDefault(); setActiveDock(this);">
+      <a href="#absensi-siswa" class="dock-item" title="Absensi Siswa" data-section="absensi-siswa" onclick="showView(event, 'absensi-siswa')">
         <i data-lucide="trending-up" style="width:20px;height:20px;"></i>
       </a>
     </div>
@@ -629,6 +798,7 @@
       }
 
       document.getElementById('countBadge').textContent = users.length + ' Peserta';
+      document.getElementById('attendanceParticipantCount').textContent = users.length;
 
       users.forEach(function(u) {
         const opt = document.createElement('option');
@@ -676,16 +846,22 @@
       el.classList.add('active');
     }
 
+    function showView(e, sectionId) {
+      e.preventDefault();
+      const view = document.getElementById(sectionId);
+      if (!view) return;
+
+      document.querySelectorAll('.app-view').forEach(function(item) {
+        item.classList.remove('active');
+      });
+      view.classList.add('active');
+      setActiveDock(e.currentTarget);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function navigateTo(e, page) {
-      if (typeof google !== 'undefined' && google.script && google.script.url) {
-        if (e) e.preventDefault();
-        google.script.url.getLocation(function(loc) {
-          const base = loc.url.split('?')[0];
-          const target = page ? base + '?page=' + page : base;
-          if (window.top) { window.top.location.href = target; }
-          else { window.location.href = target; }
-        });
-      }
+      e.preventDefault();
+      window.top.location.href = e.currentTarget.href;
     }
 
     // ─── Generate QR ──────────────────────────────────────────────

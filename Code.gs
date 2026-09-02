@@ -7,14 +7,21 @@ const SHEET_NAME_USER = 'Data_User';
 const SHEET_NAME_LOG  = 'Log_Presensi';
 
 function doGet(e) {
-  const page = e.parameter.page;
+  const page = e && e.parameter ? e.parameter.page : '';
+  const fileName = page === 'admin' ? 'admin' : 'index';
+
+  // Gunakan template agar URL deployment dapat dipasang ke halaman. URL relatif
+  // dari HtmlService mengarah ke iframe googleusercontent, bukan ke Web App.
+  const template = HtmlService.createTemplateFromFile(fileName);
+  template.webAppUrl = ScriptApp.getService().getUrl();
+
   if (page === 'admin') {
-    return HtmlService.createHtmlOutputFromFile('admin')
+    return template.evaluate()
       .setTitle('Admin Scanner - Aplikasi Presensi')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
-  return HtmlService.createHtmlOutputFromFile('index')
+  return template.evaluate()
     .setTitle('Aplikasi Presensi QR Code')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // <-- Tambahkan di sini juga
