@@ -282,13 +282,13 @@
 
   <!-- FLOATING FIXED BOTTOM DOCK -->
   <div class="dock-container" id="bottomDock">
-    <a href="#" class="dock-item" title="Beranda" onclick="event.preventDefault(); setActiveDock(this);">
+    <a href="?" target="_top" class="dock-item" title="Presensi Peserta" onclick="navigateTo(event, '')">
       <i data-lucide="rocket" style="width:20px;height:20px;"></i>
     </a>
-    <a href="#" class="dock-item" title="Kotak Masuk" onclick="event.preventDefault(); setActiveDock(this);">
-      <i data-lucide="inbox" style="width:20px;height:20px;"></i>
+    <a href="?page=admin" target="_top" class="dock-item active" title="Admin Scanner" onclick="navigateTo(event, 'admin')">
+      <i data-lucide="scan-line" style="width:20px;height:20px;"></i>
     </a>
-    <a href="#" class="dock-item active" title="Scanner" onclick="event.preventDefault(); setActiveDock(this);">
+    <a href="#" class="dock-item" title="Aktivitas" onclick="event.preventDefault(); setActiveDock(this);">
       <i data-lucide="network" style="width:20px;height:20px;"></i>
     </a>
     <a href="#" class="dock-item" title="Modul" onclick="event.preventDefault(); setActiveDock(this);">
@@ -317,6 +317,18 @@
     function setActiveDock(el) {
       document.querySelectorAll('.dock-item').forEach(function(item) { item.classList.remove('active'); });
       el.classList.add('active');
+    }
+
+    function navigateTo(e, page) {
+      if (typeof google !== 'undefined' && google.script && google.script.url) {
+        if (e) e.preventDefault();
+        google.script.url.getLocation(function(loc) {
+          const base = loc.url.split('?')[0];
+          const target = page ? base + '?page=' + page : base;
+          if (window.top) { window.top.location.href = target; }
+          else { window.location.href = target; }
+        });
+      }
     }
 
     function startScanner() {
