@@ -5,6 +5,8 @@
 
 const SHEET_NAME_USER = 'Data_User';
 const SHEET_NAME_LOG  = 'Log_Presensi';
+const EXTERNAL_SCANNER_URL = 'https://ichwandroid.github.io/absensi-ekstra/scanner.html';
+const EXTERNAL_SCANNER_ORIGIN = 'https://ichwandroid.github.io';
 
 function doGet(e) {
   const page = e && e.parameter ? e.parameter.page : '';
@@ -14,6 +16,8 @@ function doGet(e) {
   // dari HtmlService mengarah ke iframe googleusercontent, bukan ke Web App.
   const template = HtmlService.createTemplateFromFile(fileName);
   template.webAppUrl = ScriptApp.getService().getUrl();
+  template.externalScannerUrl = EXTERNAL_SCANNER_URL;
+  template.externalScannerOrigin = EXTERNAL_SCANNER_ORIGIN;
 
   if (page === 'admin') {
     return template.evaluate()

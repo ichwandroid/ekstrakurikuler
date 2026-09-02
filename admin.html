@@ -133,6 +133,7 @@
     }
     .btn-sm:active { transform:scale(0.96); }
     .btn-start-sm { background:var(--lime); color:#0d0d14; }
+    .btn-external-sm { background:var(--surface2); color:var(--white); border:1px solid rgba(200,247,49,0.3); }
     .btn-stop-sm { background:rgba(255,107,107,0.15); color:var(--danger); border:1px solid rgba(255,107,107,0.3); }
 
     /* LOG SECTION */
@@ -239,9 +240,9 @@
       <div class="scanner-status" id="scanStatus">
         <span class="dot"></span>Kamera belum aktif
       </div>
-      <button class="btn-sm btn-start-sm" id="btnStart" onclick="startScanner()">
-        <i data-lucide="play" style="width:14px;height:14px;"></i>
-        <span>Mulai</span>
+      <button class="btn-sm btn-start-sm" id="btnStart" onclick="openExternalScanner()">
+        <i data-lucide="external-link" style="width:14px;height:14px;"></i>
+        <span>Buka Scanner</span>
       </button>
       <button class="btn-sm btn-stop-sm" id="btnStop" onclick="stopScanner()" style="display:none;">
         <i data-lucide="square" style="width:14px;height:14px;"></i>
@@ -324,15 +325,42 @@
       window.top.location.href = e.currentTarget.href;
     }
 
+    function openExternalScanner() {
+      const scannerUrl = '<?= externalScannerUrl ?>';
+      const callbackOrigin = window.location.origin;
+      const url = scannerUrl + '?returnOrigin=' + encodeURIComponent(callbackOrigin);
+      const popup = window.open(url, 'externalQrScanner', 'width=480,height=720');
+      if (!popup) {
+        alert('Popup diblokir browser. Izinkan popup untuk membuka Scanner Eksternal.');
+      }
+    }
+
+    window.addEventListener('message', function(event) {
+      if (event.origin !== '<?= externalScannerOrigin ?>') return;
+      if (!event.data || event.data.type !== 'QR_SCAN_RESULT' || !event.data.payload) return;
+      submitQrPayload(event.data.payload);
+    });
+
     function startScanner() {
       if (isScanning) return;
       html5QrCode = new Html5Qrcode('reader');
-      html5QrCode.start(
-        { facingMode:'environment' },
-        { fps:10, qrbox:{ width:200, height:200 } },
-        onScanSuccess,
-        function(){}
-      ).then(function() {
+      Html5Qrcode.getCameras().then(function(cameras) {
+        if (!cameras || cameras.length === 0) {
+          throw new Error('Tidak ada kamera yang terdeteksi pada perangkat ini.');
+        }
+
+        // Gunakan kamera belakang jika tersedia; jika tidak, gunakan webcam pertama.
+        const backCamera = cameras.find(function(camera) {
+          return /back|rear|environment|belakang/i.test(camera.label || '');
+        });
+        const selectedCamera = backCamera || cameras[0];
+        return html5QrCode.start(
+          selectedCamera.id,
+          { fps:10, qrbox:{ width:200, height:200 } },
+          onScanSuccess,
+          function(){}
+        );
+      }).then(function() {
         isScanning = true;
         document.getElementById('btnStart').style.display = 'none';
         document.getElementById('btnStop').style.display  = 'inline-flex';
@@ -340,6 +368,15 @@
         st.className = 'scanner-status active';
         st.innerHTML = '<span class="dot"></span>Kamera aktif — siap scan';
       }).catch(function(err) {
+        const message = String(err);
+        if (message.indexOf('NotAllowedError') !== -1) {
+          alert('Akses kamera ditolak. Jika halaman dibuka dari Google Apps Script, fitur kamera dibatasi oleh iframe sandbox. Untuk uji coba, buka admin.html melalui http://localhost.');
+          return;
+        }
+        if (message.indexOf('NotFoundError') !== -1 || message.indexOf('Tidak ada kamera') !== -1) {
+          alert('Kamera tidak ditemukan. Pastikan webcam/kamera ponsel tersambung, tidak sedang dipakai aplikasi lain, dan telah diizinkan di browser.');
+          return;
+        }
         alert('Tidak dapat mengakses kamera: ' + err);
       });
     }
@@ -360,15 +397,50 @@
     }
 
     function onScanSuccess(decoded) {
+      submitQrPayload(decoded);
+    }
+
+    function submitQrPayload(decoded) {
       if (isProcessing) return;
       isProcessing = true;
       stopScanner(true);
       document.getElementById('processingOverlay').classList.add('visible');
 
-      google.script.run
-        .withSuccessHandler(onServerResponse)
-        .withFailureHandler(onServerError)
-        .recordPresensi(decoded);
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(onServerResponse)
+          .withFailureHandler(onServerError)
+          .recordPresensi(decoded);
+      } else {
+        processLocalScan(decoded);
+      }
+    }
+
+    // Memungkinkan kamera dan UI diuji dari localhost tanpa backend Apps Script.
+    function processLocalScan(decoded) {
+      let data;
+      try {
+        data = JSON.parse(decoded);
+      } catch (error) {
+        onServerResponse({ success:false, message:'QR Code tidak valid atau tidak dapat dibaca.' });
+        return;
+      }
+
+      if (!data.id || !data.nama || !data.token || !data.timestamp) {
+        onServerResponse({ success:false, message:'Data QR Code tidak lengkap.' });
+        return;
+      }
+
+      onServerResponse({
+        success: true,
+        message: 'QR berhasil dibaca dalam mode uji lokal. Data belum disimpan ke Spreadsheet.',
+        data: {
+          nama: data.nama,
+          jabatan: data.jabatan || '-',
+          waktu: new Date().toLocaleString('id-ID'),
+          status: 'Uji Lokal'
+        }
+      });
     }
 
     function onServerResponse(result) {
@@ -432,7 +504,8 @@
           const st = document.getElementById('scanStatus');
           st.className = 'scanner-status';
           st.innerHTML = '<span class="dot"></span>Kamera belum aktif';
-          startScanner();
+          // Kamera dijalankan pada halaman Scanner Eksternal agar tidak
+          // terkena pembatasan sandbox Google Apps Script.
         }
       });
     }
