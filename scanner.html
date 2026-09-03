@@ -125,6 +125,16 @@
             color: var(--lime);
             border: 1px solid rgba(200, 247, 49, .4);
         }
+        .dashboard-modal { display:none; position:fixed; inset:0; z-index:20; padding:24px; background:rgba(13,13,20,.84); backdrop-filter:blur(8px); }
+        .dashboard-modal.show { display:grid; place-items:center; }
+        .dashboard-panel { width:min(100%,620px); max-height:85vh; overflow:auto; padding:20px; border:1px solid var(--border); border-radius:24px; background:var(--surface); }
+        .dashboard-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+        .dashboard-top h2 { margin:0; font-size:1.15rem; }
+        .dashboard-close { width:auto; margin:0; padding:9px 13px; background:var(--surface); color:var(--white); border:1px solid var(--border); }
+        .dashboard-total { padding:16px; margin-bottom:12px; border-radius:16px; background:rgba(200,247,49,.12); color:var(--lime); font-size:1.5rem; font-weight:800; }
+        .dashboard-total small { display:block; margin-top:3px; color:var(--muted); font-size:.75rem; font-weight:600; }
+        .dashboard-refresh { margin:0 0 12px; padding:11px; }
+        .dashboard-empty { padding:26px 6px; color:var(--muted); text-align:center; }
 
         .history-head {
             display: flex;
@@ -275,6 +285,14 @@
 
 <body>
     <div class="toast" id="toast"></div>
+    <div class="dashboard-modal" id="dashboardModal" role="dialog" aria-modal="true" aria-labelledby="dashboardTitle">
+        <div class="dashboard-panel">
+            <div class="dashboard-top"><h2 id="dashboardTitle">Dashboard Hari Ini</h2><button class="dashboard-close" type="button" onclick="closeDashboard()">Tutup</button></div>
+            <div class="dashboard-total" id="dashboardTotal">-<small>Memuat data kehadiran...</small></div>
+            <button class="dashboard-refresh" type="button" onclick="loadDashboard()">Refresh Data</button>
+            <ul class="history-list" id="dashboardList"></ul>
+        </div>
+    </div>
     <main>
         <div class="badge">Scanner Admin</div>
         <h1>Pindai QR Peserta</h1>
@@ -286,8 +304,7 @@
                     <div class="status" id="status">Menyiapkan kamera...</div>
                 </div>
                 <div class="camera-controls">
-                    <button id="switchCameraButton" class="camera-switch" type="button" onclick="switchCamera()"
-                        style="display:none">Ganti Kamera</button>
+                    <button id="dashboardButton" class="camera-switch" type="button" onclick="openDashboard()">Dashboard</button>
                     <button id="retryButton" type="button" onclick="startScanner()" style="display:none">Coba
                         Lagi</button>
                 </div>
@@ -301,7 +318,7 @@
         </div>
     </main>
     <script>
-        let scanner, scanning = false, delivered = false, toastTimer, cameras = [], activeCameraIndex = 0; const statusEl = document.getElementById('status'), retryButton = document.getElementById('retryButton'), switchCameraButton = document.getElementById('switchCameraButton'), historyList = document.getElementById('historyList'), scanCount = document.getElementById('scanCount'), toast = document.getElementById('toast'), backendUrl = 'https://script.google.com/macros/s/AKfycbxyqt4qTJ7-wNBPU5dK9PaQRlu6txl4l7NaaHbFkKRyntQrnByJCnW09PuY8UNeaEO7rA/exec', historyKey = 'absensi-ekstra-scan-history'; let scanHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        let scanner, scanning = false, delivered = false, toastTimer, cameras = [], activeCameraIndex = 0; const statusEl = document.getElementById('status'), retryButton = document.getElementById('retryButton'), historyList = document.getElementById('historyList'), scanCount = document.getElementById('scanCount'), toast = document.getElementById('toast'), dashboardModal = document.getElementById('dashboardModal'), dashboardTotal = document.getElementById('dashboardTotal'), dashboardList = document.getElementById('dashboardList'), backendUrl = 'https://script.google.com/macros/s/AKfycbxyqt4qTJ7-wNBPU5dK9PaQRlu6txl4l7NaaHbFkKRyntQrnByJCnW09PuY8UNeaEO7rA/exec', historyKey = 'absensi-ekstra-scan-history'; let scanHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
         function setStatus(message, isError) { statusEl.textContent = message; statusEl.className = 'status' + (isError ? ' error' : '') } function notify(message, isError) { clearTimeout(toastTimer); toast.textContent = message; toast.className = 'toast show' + (isError ? ' error' : ''); toastTimer = setTimeout(() => toast.className = 'toast', 3200) } function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char])) } function getData(payload) { try { return JSON.parse(payload) } catch (error) { return {} } } function renderHistory() { scanCount.textContent = scanHistory.length; if (!scanHistory.length) { historyList.innerHTML = '<li class="history-empty">Belum ada data yang dikirim dari perangkat ini.</li>'; return } historyList.innerHTML = scanHistory.map(item => '<li class="history-item"><span class="history-icon">OK</span><div class="history-main"><div class="history-name">' + escapeHtml(item.name) + '</div><div class="history-detail">' + escapeHtml(item.role) + ' - Berhasil dikirim</div></div><span class="history-time">' + item.time + '</span></li>').join('') } function addToHistory(payload) { const data = getData(payload); scanHistory.unshift({ id: String(data.id || payload), name: data.nama || 'QR terbaca', role: data.jabatan || 'Peserta', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }); scanHistory = scanHistory.slice(0, 50); localStorage.setItem(historyKey, JSON.stringify(scanHistory)); renderHistory() }
         function enableContinuousFocus() {
             if (!scanner || typeof scanner.applyVideoConstraints !== 'function') return Promise.resolve();
@@ -316,8 +333,11 @@
             return scanner.start(cameras[activeCameraIndex].id, { fps: 10, qrbox: { width: 220, height: 220 } }, onScanSuccess, () => { })
                 .then(() => enableContinuousFocus());
         }
-        function startScanner() { if (scanning || delivered) return; retryButton.style.display = 'none'; setStatus('Meminta akses kamera...'); Html5Qrcode.getCameras().then(foundCameras => { if (!foundCameras.length) throw new Error('Tidak ada kamera yang terdeteksi.'); cameras = foundCameras; const rearIndex = cameras.findIndex(camera => /back|rear|environment|belakang/i.test(camera.label || '')); activeCameraIndex = rearIndex >= 0 ? rearIndex : 0; switchCameraButton.style.display = cameras.length > 1 ? 'block' : 'none'; return startCamera(); }).then(() => { scanning = true; setStatus('Kamera aktif - arahkan ke QR Code peserta.') }).catch(error => { setStatus('Kamera tidak dapat digunakan: ' + error, true); retryButton.style.display = 'block' }) }
-        function switchCamera() { if (!scanning || cameras.length < 2) return; setStatus('Mengganti kamera...'); scanner.stop().then(() => { scanning = false; activeCameraIndex = (activeCameraIndex + 1) % cameras.length; return startCamera(); }).then(() => { scanning = true; setStatus('Kamera aktif - arahkan ke QR Code peserta.'); }).catch(error => { setStatus('Gagal mengganti kamera: ' + error, true); }); }
+        function startScanner() { if (scanning || delivered) return; retryButton.style.display = 'none'; setStatus('Meminta akses kamera...'); Html5Qrcode.getCameras().then(foundCameras => { if (!foundCameras.length) throw new Error('Tidak ada kamera yang terdeteksi.'); cameras = foundCameras; const rearIndex = cameras.findIndex(camera => /back|rear|environment|belakang/i.test(camera.label || '')); activeCameraIndex = rearIndex >= 0 ? rearIndex : 0; return startCamera(); }).then(() => { scanning = true; setStatus('Kamera aktif - arahkan ke QR Code peserta.') }).catch(error => { setStatus('Kamera tidak dapat digunakan: ' + error, true); retryButton.style.display = 'block' }) }
+        function openDashboard() { dashboardModal.classList.add('show'); loadDashboard(); }
+        function closeDashboard() { dashboardModal.classList.remove('show'); }
+        function loadDashboard() { dashboardTotal.innerHTML = '-<small>Memuat data kehadiran...</small>'; dashboardList.innerHTML = ''; const old = document.getElementById('dashboardJsonp'); if (old) old.remove(); const script = document.createElement('script'); script.id = 'dashboardJsonp'; script.src = backendUrl + '?api=dashboard&callback=onDashboardData&_=' + Date.now(); script.onerror = () => { dashboardTotal.innerHTML = '-<small>Gagal memuat data dashboard.</small>'; }; document.body.appendChild(script); }
+        function onDashboardData(data) { dashboardTotal.innerHTML = (data.total || 0) + '<small>Peserta hadir hari ini</small>'; const records = data.records || []; dashboardList.innerHTML = records.length ? records.map(item => '<li class="history-item"><span class="history-icon">OK</span><div class="history-main"><div class="history-name">' + escapeHtml(item.name) + '</div><div class="history-detail">' + escapeHtml(item.desc || 'Hadir') + '</div></div><span class="history-time">' + escapeHtml(item.time) + '</span></li>').join('') : '<li class="dashboard-empty">Belum ada presensi hari ini.</li>'; }
         function onScanSuccess(decodedText) { if (delivered) return; const data = getData(decodedText), id = String(data.id || decodedText); if (scanHistory.some(item => item.id === id)) { notify((data.nama || 'Peserta ini') + ' sudah dipindai pada perangkat ini.', true); return } delivered = true; scanning = false; if (scanner) scanner.stop().catch(() => { }); setStatus('QR terbaca. Menyimpan presensi...'); fetch(backendUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'recordPresensi', payload: decodedText }) }).then(() => { addToHistory(decodedText); notify((data.nama || 'Peserta') + ' berhasil dikirim ke presensi.'); setStatus('Data berhasil dikirim. Siap scan peserta berikutnya.'); setTimeout(() => { delivered = false; startScanner() }, 1000) }).catch(() => { setStatus('Data gagal dikirim. Periksa koneksi internet lalu coba lagi.', true); notify('Data gagal dikirim. Silakan coba lagi.', true); delivered = false; retryButton.style.display = 'block' }) } renderHistory(); startScanner();
     </script>
 </body>

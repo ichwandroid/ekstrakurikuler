@@ -8,7 +8,18 @@ const SHEET_NAME_LOG  = 'Log_Presensi';
 const SHEET_NAME_JOURNAL = 'Jurnal_Kegiatan';
 const JOURNAL_PHOTO_FOLDER_ID = '12VbH_aeHsBicV0anaqhXJJElHY6RZiuu';
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.api === 'dashboard') {
+    const callback = String(e.parameter.callback || '');
+    if (!/^[A-Za-z_$][0-9A-Za-z_$]{0,80}$/.test(callback)) {
+      return ContentService.createTextOutput('Invalid callback.');
+    }
+    const records = getTodayPresensi();
+    return ContentService.createTextOutput(callback + '(' + JSON.stringify({
+      total: records.length,
+      records: records
+    }) + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Aplikasi Presensi QR Code')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
