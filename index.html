@@ -25,6 +25,7 @@
     }
     html, body {
       min-height: 100%;
+      min-height: -webkit-fill-available;
       background: var(--bg);
       font-family: 'Inter', system-ui, sans-serif;
       color: var(--white);
@@ -36,6 +37,8 @@
       align-items: center;
       padding: 32px 16px 110px;
       min-height: 100vh;
+      min-height: 100svh;
+      min-height: 100dvh;
     }
 
     /* ── APP CONTAINER ── */
@@ -517,21 +520,55 @@
     }
     .attendance-value { color: var(--lime); font-size: 1.25rem; font-weight: 800; }
     .attendance-label { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
-    .journal-field { margin-bottom: 14px; }
-    .journal-label { display:block; margin:0 0 7px; color:var(--muted); font-size:0.75rem; font-weight:700; }
+    .journal-form { padding:20px; }
+    .journal-grid { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; min-width:0; }
+    .journal-form > .journal-field { margin-top:14px; }
+    .journal-field { margin:0; min-width:0; max-width:100%; }
+    .journal-label { display:flex; align-items:center; gap:7px; margin:0 0 8px; color:var(--muted); font-size:0.75rem; font-weight:700; }
+    .journal-label i { color:var(--lime); }
+    .journal-required { color:var(--lime); }
     .journal-input, .journal-textarea {
-      width:100%; border:1px solid var(--border); border-radius:14px; background:var(--surface2);
-      color:var(--white); padding:13px; font:inherit; font-size:0.86rem; outline:none;
+      display:block; width:100%; min-width:0; max-width:100%; min-height:52px; border:1px solid var(--border); border-radius:15px; background:var(--surface2);
+      color:var(--white); padding:14px; font:inherit; font-size:0.9rem; outline:none; transition:0.2s;
     }
-    .journal-input:focus, .journal-textarea:focus { border-color:var(--lime); }
-    .journal-textarea { min-height:92px; resize:vertical; }
-    .journal-photo { border:1px dashed rgba(200,247,49,.45); border-radius:14px; padding:12px; color:var(--muted); font-size:0.78rem; }
-    .journal-preview { display:none; width:100%; max-height:180px; object-fit:cover; margin-top:10px; border-radius:12px; }
+    .journal-input[type="date"] { -webkit-appearance:none; appearance:none; }
+    .journal-input:focus, .journal-textarea:focus { border-color:var(--lime); box-shadow:0 0 0 3px rgba(200,247,49,.13); }
+    .journal-input::placeholder, .journal-textarea::placeholder { color:rgba(255,255,255,.34); }
+    .journal-textarea { min-height:112px; line-height:1.5; resize:vertical; }
+    .journal-photo { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+    .journal-upload {
+      display:flex; align-items:center; gap:12px; width:100%; min-height:78px; padding:12px;
+      border:1px dashed rgba(200,247,49,.55); border-radius:16px; background:rgba(200,247,49,.04);
+      color:var(--white); cursor:pointer; transition:0.2s;
+    }
+    .journal-upload:active, .journal-upload:hover { border-color:var(--lime); background:rgba(200,247,49,.09); }
+    .journal-upload-icon { width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:12px; flex-shrink:0; color:var(--lime); background:rgba(200,247,49,.14); }
+    .journal-upload-copy { display:block; min-width:0; flex:1; overflow:hidden; }
+    .journal-upload-title { display:block; font-size:0.83rem; font-weight:700; line-height:1.3; }
+    .journal-upload-name { display:-webkit-box; width:100%; margin-top:4px; overflow:hidden; color:var(--muted); font-size:0.73rem; line-height:1.3; text-overflow:ellipsis; line-clamp:2; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+    .journal-upload-action { flex-shrink:0; color:var(--lime); font-size:0.72rem; font-weight:800; }
+    .journal-preview { display:none; width:100%; max-height:180px; object-fit:cover; margin-top:10px; border-radius:12px; border:1px solid var(--border); }
     .journal-preview.show { display:block; }
-    .journal-submit { width:100%; border:0; border-radius:15px; padding:15px; background:var(--lime); color:#0d0d14; font:inherit; font-weight:800; cursor:pointer; }
+    .journal-submit { width:100%; min-height:54px; margin-top:18px; border:0; border-radius:16px; padding:15px; background:var(--lime); color:#0d0d14; font:inherit; font-size:0.92rem; font-weight:800; cursor:pointer; box-shadow:0 8px 20px rgba(200,247,49,.2); }
+    .journal-submit:disabled { opacity:.6; cursor:wait; }
     .journal-message { display:none; margin-top:12px; padding:11px; border-radius:12px; font-size:0.78rem; }
     .journal-message.show { display:block; background:rgba(200,247,49,.12); color:var(--lime); }
     .journal-message.error { background:rgba(255,107,107,.12); color:#ff9a9a; }
+    @media (min-width:620px) {
+      .app-container { max-width:620px; }
+      .journal-grid.two-cols { grid-template-columns:1fr 1fr; }
+      .journal-form { padding:24px; }
+    }
+    @media (max-width:480px) {
+      body { padding:24px 12px 104px; }
+      .app-container { max-width:100%; }
+      .journal-form { padding:16px; border-radius:18px; }
+      .journal-upload { gap:8px; padding:10px; }
+      .journal-upload-icon { width:38px; height:38px; }
+      .journal-upload-title { font-size:0.8rem; }
+      .journal-upload-name { font-size:0.68rem; }
+      .journal-upload-action { font-size:0.68rem; }
+    }
 
     /* ── FLOATING FIXED BOTTOM DOCK ── */
     .dock-container {
@@ -694,26 +731,33 @@
           <div class="page-section-subtitle">Catat kegiatan ekstrakurikuler</div>
         </div>
       </div>
-      <form class="menu-card" id="journalForm" onsubmit="submitJournal(event)">
+      <form class="menu-card journal-form" id="journalForm" onsubmit="submitJournal(event)">
+        <div class="journal-grid two-cols">
         <div class="journal-field">
-          <label class="journal-label" for="journalDate">Tanggal kegiatan *</label>
+          <label class="journal-label" for="journalDate"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i>Tanggal kegiatan <span class="journal-required">*</span></label>
           <input class="journal-input" id="journalDate" type="date" required>
         </div>
         <div class="journal-field">
-          <label class="journal-label" for="journalUser">Nama peserta *</label>
+          <label class="journal-label" for="journalUser"><i data-lucide="user-round" style="width:15px;height:15px;"></i>Nama peserta <span class="journal-required">*</span></label>
           <select class="journal-input" id="journalUser" required><option value="">-- Pilih nama peserta --</option></select>
         </div>
+        </div>
         <div class="journal-field">
-          <label class="journal-label" for="journalActivity">Kegiatan *</label>
+          <label class="journal-label" for="journalActivity"><i data-lucide="clipboard-pen-line" style="width:15px;height:15px;"></i>Kegiatan <span class="journal-required">*</span></label>
           <textarea class="journal-textarea" id="journalActivity" placeholder="Contoh: Latihan rutin sepak bola" required></textarea>
         </div>
         <div class="journal-field">
-          <label class="journal-label" for="journalNote">Keterangan <span style="font-weight:400;">(opsional)</span></label>
+          <label class="journal-label" for="journalNote"><i data-lucide="message-square-text" style="width:15px;height:15px;"></i>Keterangan <span style="font-weight:400;">(opsional)</span></label>
           <textarea class="journal-textarea" id="journalNote" placeholder="Catatan tambahan kegiatan"></textarea>
         </div>
         <div class="journal-field">
-          <label class="journal-label" for="journalPhoto">Foto kegiatan *</label>
+          <label class="journal-label" for="journalPhoto"><i data-lucide="image" style="width:15px;height:15px;"></i>Foto kegiatan <span class="journal-required">*</span></label>
           <input class="journal-photo" id="journalPhoto" type="file" accept="image/*" required onchange="previewJournalPhoto(event)">
+          <label class="journal-upload" for="journalPhoto">
+            <span class="journal-upload-icon"><i data-lucide="image-plus" style="width:20px;height:20px;"></i></span>
+            <span class="journal-upload-copy"><span class="journal-upload-title">Pilih foto kegiatan</span><span class="journal-upload-name" id="journalPhotoName">Ketuk di sini untuk mengambil atau memilih foto</span></span>
+            <span class="journal-upload-action">PILIH</span>
+          </label>
           <img class="journal-preview" id="journalPreview" alt="Preview foto kegiatan">
         </div>
         <button class="journal-submit" id="journalSubmit" type="submit">Simpan Jurnal</button>
@@ -806,7 +850,11 @@
     document.getElementById('journalDate').value = new Date().toISOString().slice(0, 10);
     function previewJournalPhoto(e) {
       const file = e.target.files[0], preview = document.getElementById('journalPreview');
-      if (file) { preview.src = URL.createObjectURL(file); preview.classList.add('show'); }
+      if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.classList.add('show');
+        document.getElementById('journalPhotoName').textContent = file.name;
+      }
     }
     function submitJournal(e) {
       e.preventDefault();
@@ -815,7 +863,7 @@
       reader.onload = function() {
         google.script.run.withSuccessHandler(function(r) {
           button.disabled = false; button.textContent = 'Simpan Jurnal'; message.textContent = r.message; message.className = 'journal-message show';
-          document.getElementById('journalForm').reset(); document.getElementById('journalDate').value = new Date().toISOString().slice(0,10); document.getElementById('journalPreview').classList.remove('show');
+          document.getElementById('journalForm').reset(); document.getElementById('journalDate').value = new Date().toISOString().slice(0,10); document.getElementById('journalPreview').classList.remove('show'); document.getElementById('journalPhotoName').textContent = 'Ketuk di sini untuk mengambil atau memilih foto';
         }).withFailureHandler(function(err) {
           button.disabled = false; button.textContent = 'Simpan Jurnal'; message.textContent = 'Gagal menyimpan: ' + (err.message || err); message.className = 'journal-message show error';
         }).saveJournal({ tanggal:document.getElementById('journalDate').value, user:JSON.parse(document.getElementById('journalUser').value), kegiatan:document.getElementById('journalActivity').value.trim(), keterangan:document.getElementById('journalNote').value.trim(), photoData:reader.result, photoName:file.name, photoType:file.type });
