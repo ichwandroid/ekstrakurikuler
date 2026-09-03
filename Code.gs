@@ -6,6 +6,8 @@
 const SHEET_NAME_USER = 'Data_User';
 const SHEET_NAME_LOG  = 'Log_Presensi';
 const SHEET_NAME_JOURNAL = 'Jurnal_Kegiatan';
+const SHEET_NAME_STUDENT = 'Data_Siswa';
+const SHEET_NAME_STUDENT_ATTENDANCE = 'Absensi_Siswa';
 const JOURNAL_PHOTO_FOLDER_ID = '12VbH_aeHsBicV0anaqhXJJElHY6RZiuu';
 
 function doGet(e) {
@@ -66,6 +68,41 @@ function getUserList() {
     Logger.log('Error di getUserList: ' + error.toString());
     throw error;
   }
+}
+
+function getTeacherList() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME_USER);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues()
+    .filter(function(row) { return row[0] && row[1]; })
+    .map(function(row) { return { id: String(row[0]), nama: String(row[1]) }; });
+}
+
+function getStudentsByTeacher(teacherId) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME_STUDENT);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues()
+    .filter(function(row) { return String(row[0]).trim() === String(teacherId).trim() && row[1] && row[2]; })
+    .map(function(row) { return { guruId: String(row[0]), id: String(row[1]), nama: String(row[2]), kelas: String(row[3] || '-') }; });
+}
+
+function saveManualAttendance(data) {
+  if (!data || !data.tanggal || !data.guruId || !data.kegiatan || !Array.isArray(data.records) || !data.records.length) {
+    throw new Error('Guru, tanggal, kegiatan, dan daftar siswa wajib diisi.');
+  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME_STUDENT_ATTENDANCE);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME_STUDENT_ATTENDANCE);
+    sheet.appendRow(['Waktu Simpan', 'Tanggal', 'ID Guru', 'Nama Guru', 'Kegiatan', 'ID Siswa', 'Nama Siswa', 'Kelas', 'Status']);
+  }
+  const validStatuses = ['Hadir', 'Izin', 'Sakit', 'Alpa'];
+  const rows = data.records.map(function(record) {
+    if (!record.id || !record.nama || validStatuses.indexOf(record.status) === -1) throw new Error('Data status siswa tidak valid.');
+    return [new Date(), data.tanggal, String(data.guruId), String(data.guruNama || ''), String(data.kegiatan).trim(), String(record.id), String(record.nama), String(record.kelas || '-'), record.status];
+  });
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  return { success: true, message: rows.length + ' data absensi berhasil disimpan.' };
 }
 
 function getTodayPresensi() {

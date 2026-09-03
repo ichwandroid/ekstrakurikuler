@@ -520,6 +520,25 @@
     }
     .attendance-value { color: var(--lime); font-size: 1.25rem; font-weight: 800; }
     .attendance-label { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
+    .manual-attendance-form { padding:20px; }
+    .manual-attendance-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; }
+    .manual-field { min-width:0; }
+    .manual-label { display:flex; align-items:center; gap:7px; margin:0 0 8px; color:var(--muted); font-size:0.75rem; font-weight:700; }
+    .manual-label i { color:var(--lime); }
+    .manual-input { display:block; width:100%; min-width:0; min-height:50px; border:1px solid var(--border); border-radius:15px; background:var(--surface2); color:var(--white); padding:13px; font:inherit; font-size:0.88rem; outline:none; }
+    .manual-input:focus { border-color:var(--lime); box-shadow:0 0 0 3px rgba(200,247,49,.13); }
+    .student-list { display:none; margin-top:18px; border-top:1px solid var(--border); }
+    .student-list.show { display:block; }
+    .student-row { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--border); }
+    .student-copy { flex:1; min-width:0; }
+    .student-name { font-size:.82rem; font-weight:700; }
+    .student-class { margin-top:3px; color:var(--muted); font-size:.7rem; }
+    .student-status { width:105px; min-height:40px; padding:8px; border-radius:11px; background:var(--surface); color:var(--white); border:1px solid var(--border); font:inherit; font-size:.75rem; }
+    .manual-submit { width:100%; min-height:52px; margin-top:18px; border:0; border-radius:15px; background:var(--lime); color:#0d0d14; font:inherit; font-weight:800; cursor:pointer; }
+    .manual-submit:disabled { opacity:.6; cursor:wait; }
+    .manual-message { display:none; margin-top:12px; padding:11px; border-radius:12px; font-size:.78rem; }
+    .manual-message.show { display:block; background:rgba(200,247,49,.12); color:var(--lime); }
+    .manual-message.error { background:rgba(255,107,107,.12); color:#ff9a9a; }
     .journal-form { padding:20px; }
     .journal-grid { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; min-width:0; }
     .journal-form > .journal-field { margin-top:14px; }
@@ -773,16 +792,16 @@
           <div class="page-section-subtitle">Ringkasan kehadiran hari ini</div>
         </div>
       </div>
-      <div class="menu-card">
-        <div class="attendance-total">
-          <div class="attendance-stat"><div class="attendance-value" id="attendanceParticipantCount">-</div><div class="attendance-label">Peserta aktif</div></div>
-          <div class="attendance-stat"><div class="attendance-value">5 mnt</div><div class="attendance-label">Masa berlaku QR</div></div>
+      <form class="menu-card manual-attendance-form" id="manualAttendanceForm" onsubmit="submitManualAttendance(event)">
+        <div class="manual-attendance-grid">
+          <div class="manual-field"><label class="manual-label" for="attendanceTeacher"><i data-lucide="user-round" style="width:15px;height:15px;"></i>Nama guru</label><select class="manual-input" id="attendanceTeacher" required onchange="loadTeacherStudents()"><option value="">-- Pilih guru --</option></select></div>
+          <div class="manual-field"><label class="manual-label" for="attendanceDate"><i data-lucide="calendar-days" style="width:15px;height:15px;"></i>Tanggal</label><input class="manual-input" id="attendanceDate" type="date" required></div>
+          <div class="manual-field"><label class="manual-label" for="attendanceActivity"><i data-lucide="clipboard-pen-line" style="width:15px;height:15px;"></i>Kegiatan</label><input class="manual-input" id="attendanceActivity" placeholder="Contoh: Latihan rutin" required></div>
         </div>
-        <div class="attendance-row">
-          <div class="menu-item-icon"><i data-lucide="circle-check" style="width:18px;height:18px;"></i></div>
-          <div class="menu-item-copy"><div class="menu-item-title">Cara melihat kehadiran</div><div class="menu-item-desc">Riwayat scan ditampilkan pada halaman Scanner Admin.</div></div>
-        </div>
-      </div>
+        <div class="student-list" id="studentList"></div>
+        <button class="manual-submit" id="manualSubmit" type="submit" disabled>Simpan Absensi</button>
+        <div class="manual-message" id="manualMessage"></div>
+      </form>
     </section>
 
     <!-- FLOATING BOTTOM DOCK -->
@@ -805,6 +824,8 @@
     let countdownInt  = null;
     let totalSec      = 300;
     let remainingSec  = 300;
+    let teacherList = [];
+    let teacherStudents = [];
 
     lucide.createIcons();
 
@@ -820,6 +841,53 @@
       .withSuccessHandler(onUsersLoaded)
       .withFailureHandler(onLoadError)
       .getUserList();
+
+    google.script.run.withSuccessHandler(onTeachersLoaded).withFailureHandler(function(err) {
+      showManualMessage('Gagal memuat guru: ' + (err.message || err), true);
+    }).getTeacherList();
+
+    document.getElementById('attendanceDate').value = new Date().toISOString().slice(0, 10);
+
+    function onTeachersLoaded(teachers) {
+      teacherList = teachers || [];
+      const select = document.getElementById('attendanceTeacher');
+      teacherList.forEach(function(teacher) {
+        const option = document.createElement('option');
+        option.value = teacher.id;
+        option.textContent = teacher.nama + ' (' + teacher.id + ')';
+        select.appendChild(option);
+      });
+    }
+
+    function loadTeacherStudents() {
+      const teacherId = document.getElementById('attendanceTeacher').value;
+      const list = document.getElementById('studentList');
+      const submit = document.getElementById('manualSubmit');
+      list.innerHTML = ''; teacherStudents = []; submit.disabled = true;
+      if (!teacherId) { list.classList.remove('show'); return; }
+      list.innerHTML = '<div class="menu-item-desc" style="padding:14px 0;">Memuat daftar siswa...</div>';
+      list.classList.add('show');
+      google.script.run.withSuccessHandler(function(students) {
+        teacherStudents = students || [];
+        if (!teacherStudents.length) { list.innerHTML = '<div class="menu-item-desc" style="padding:14px 0;">Belum ada siswa untuk guru ini.</div>'; return; }
+        list.innerHTML = teacherStudents.map(function(student, index) {
+          return '<div class="student-row"><div class="student-copy"><div class="student-name">' + escapeHtml(student.nama) + '</div><div class="student-class">' + escapeHtml(student.id) + ' · ' + escapeHtml(student.kelas) + '</div></div><select class="student-status" data-index="' + index + '"><option>Hadir</option><option>Izin</option><option>Sakit</option><option>Alpa</option></select></div>';
+        }).join('');
+        submit.disabled = false;
+      }).withFailureHandler(function(err) { list.innerHTML = '<div class="menu-item-desc" style="padding:14px 0;">Gagal memuat siswa.</div>'; showManualMessage(err.message || err, true); }).getStudentsByTeacher(teacherId);
+    }
+
+    function submitManualAttendance(e) {
+      e.preventDefault();
+      const teacherId = document.getElementById('attendanceTeacher').value;
+      const teacher = teacherList.find(function(item) { return item.id === teacherId; });
+      const records = Array.from(document.querySelectorAll('.student-status')).map(function(select) { const student = teacherStudents[Number(select.dataset.index)]; return { id:student.id, nama:student.nama, kelas:student.kelas, status:select.value }; });
+      const button = document.getElementById('manualSubmit'); button.disabled = true; button.textContent = 'Menyimpan...';
+      google.script.run.withSuccessHandler(function(result) { button.disabled = false; button.textContent = 'Simpan Absensi'; showManualMessage(result.message, false); }).withFailureHandler(function(err) { button.disabled = false; button.textContent = 'Simpan Absensi'; showManualMessage(err.message || err, true); }).saveManualAttendance({ tanggal:document.getElementById('attendanceDate').value, guruId:teacherId, guruNama:teacher.nama, kegiatan:document.getElementById('attendanceActivity').value.trim(), records:records });
+    }
+
+    function showManualMessage(message, isError) { const element = document.getElementById('manualMessage'); element.textContent = message; element.className = 'manual-message show' + (isError ? ' error' : ''); }
+    function escapeHtml(value) { return String(value).replace(/[&<>"']/g, function(character) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]; }); }
 
     function onUsersLoaded(users) {
       const dropdown = document.getElementById('userDropdown');
