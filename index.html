@@ -675,7 +675,7 @@
     <!-- FORM SECTION -->
     <div class="form-section" id="formSection">
       <div class="section-header">
-        <span class="section-title">Pilih Peserta</span>
+        <span class="section-title">Pilih Guru</span>
         <span class="section-badge" id="countBadge">Memuat...</span>
       </div>
 
@@ -684,7 +684,7 @@
           <i data-lucide="user" style="width:18px;height:18px;"></i>
         </div>
         <select id="userDropdown" class="custom-select" onchange="onUserSelectChange()">
-          <option value="">-- Pilih Nama Peserta --</option>
+          <option value="">-- Pilih Nama Guru --</option>
         </select>
         <div class="select-icon-right">
           <i data-lucide="chevron-down" style="width:18px;height:18px;"></i>
@@ -736,7 +736,7 @@
 
       <button class="btn-regen" onclick="backToForm()">
         <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
-        <span>Pilih Peserta Lain</span>
+        <span>Pilih Guru Lain</span>
       </button>
       <p class="hint" style="margin-top:16px;">QR Code kedaluwarsa dalam 5 menit.<br>Minta Admin untuk segera memindai.</p>
     </div>
@@ -757,8 +757,8 @@
           <input class="journal-input" id="journalDate" type="date" required>
         </div>
         <div class="journal-field">
-          <label class="journal-label" for="journalUser"><i data-lucide="user-round" style="width:15px;height:15px;"></i>Nama peserta <span class="journal-required">*</span></label>
-          <select class="journal-input" id="journalUser" required><option value="">-- Pilih nama peserta --</option></select>
+          <label class="journal-label" for="journalUser"><i data-lucide="user-round" style="width:15px;height:15px;"></i>Nama Guru <span class="journal-required">*</span></label>
+          <select class="journal-input" id="journalUser" required><option value="">-- Pilih Nama Guru --</option></select>
         </div>
         </div>
         <div class="journal-field">
@@ -806,7 +806,7 @@
 
     <!-- FLOATING BOTTOM DOCK -->
     <div class="dock-container" id="bottomDock">
-      <a href="#presensi" class="dock-item active" title="Presensi Peserta" data-section="presensi" onclick="showView(event, 'presensi')">
+      <a href="#presensi" class="dock-item active" title="Presensi Guru" data-section="presensi" onclick="showView(event, 'presensi')">
         <i data-lucide="rocket" style="width:20px;height:20px;"></i>
       </a>
       <a href="#jurnal" class="dock-item" title="Jurnal" data-section="jurnal" onclick="showView(event, 'jurnal')">
@@ -837,19 +837,15 @@
       .add({ targets: '#bottomDock', opacity:[0,1], translateY:[20,0], duration:600 }, '-=200');
 
     // ─── Load users ───────────────────────────────────────────────
-    google.script.run
-      .withSuccessHandler(onUsersLoaded)
-      .withFailureHandler(onLoadError)
-      .getUserList();
-
     google.script.run.withSuccessHandler(onTeachersLoaded).withFailureHandler(function(err) {
-      showManualMessage('Gagal memuat guru: ' + (err.message || err), true);
-    }).getTeacherList();
+      showAlert('Gagal memuat nama guru: ' + (err.message || err));
+    }).getUserList();
 
     document.getElementById('attendanceDate').value = new Date().toISOString().slice(0, 10);
 
     function onTeachersLoaded(teachers) {
       teacherList = teachers || [];
+      onUsersLoaded(teacherList);
       const select = document.getElementById('attendanceTeacher');
       teacherList.forEach(function(teacher) {
         const option = document.createElement('option');
@@ -892,17 +888,16 @@
     function onUsersLoaded(users) {
       const dropdown = document.getElementById('userDropdown');
       const journalUser = document.getElementById('journalUser');
-      dropdown.innerHTML = '<option value="">-- Pilih Nama Peserta --</option>';
-      journalUser.innerHTML = '<option value="">-- Pilih nama peserta --</option>';
+      dropdown.innerHTML = '<option value="">-- Pilih Nama Guru --</option>';
+      journalUser.innerHTML = '<option value="">-- Pilih Nama Guru --</option>';
 
       if (!users || users.length === 0) {
-        showAlert('Tidak ada peserta aktif ditemukan.');
-        document.getElementById('countBadge').textContent = '0 Peserta';
+        showAlert('Tidak ada Guru aktif ditemukan.');
+        document.getElementById('countBadge').textContent = '0 Guru';
         return;
       }
 
-      document.getElementById('countBadge').textContent = users.length + ' Peserta';
-      document.getElementById('attendanceParticipantCount').textContent = users.length;
+      document.getElementById('countBadge').textContent = users.length + ' Guru';
 
       users.forEach(function(u) {
         const opt = document.createElement('option');
@@ -962,7 +957,7 @@
       alertBox.classList.remove('show');
 
       document.getElementById('previewName').textContent = selectedUser.nama;
-      document.getElementById('previewRole').textContent = selectedUser.jabatan || 'Peserta';
+      document.getElementById('previewRole').textContent = selectedUser.jabatan || 'Guru';
       preview.classList.add('show');
 
       lucide.createIcons();
@@ -1001,7 +996,7 @@
       });
 
       document.getElementById('qrName').textContent  = selectedUser.nama;
-      document.getElementById('qrRole').textContent  = selectedUser.jabatan || 'Peserta';
+      document.getElementById('qrRole').textContent  = selectedUser.jabatan || 'Guru';
 
       const qrDiv = document.getElementById('qrcode');
       qrDiv.innerHTML = '';

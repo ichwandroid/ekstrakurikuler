@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#0d0d14">
     <title>Scanner QR Presensi</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #0d0d14;
@@ -135,6 +136,24 @@
         .dashboard-total small { display:block; margin-top:3px; color:var(--muted); font-size:.75rem; font-weight:600; }
         .dashboard-refresh { margin:0 0 12px; padding:11px; }
         .dashboard-empty { padding:26px 6px; color:var(--muted); text-align:center; }
+        .dashboard-filter { display:flex; gap:10px; margin-bottom:14px; }
+        .dashboard-filter input { flex:1; min-width:0; padding:11px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--white); font:inherit; }
+        .dashboard-filter button { width:auto; margin:0; padding:11px 16px; }
+        .dashboard-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+        .dashboard-stat { padding:12px 10px; border-radius:14px; background:rgba(255,255,255,.04); }
+        .dashboard-stat strong { display:block; font-size:1.35rem; color:var(--lime); }
+        .dashboard-stat span { display:block; margin-top:3px; color:var(--muted); font-size:.68rem; }
+        .dashboard-chart { height:210px; margin:10px 0 18px; }
+        .dashboard-chart canvas { width:100% !important; height:100% !important; }
+        .dashboard-table-wrap { overflow:auto; border:1px solid var(--border); border-radius:14px; }
+        .dashboard-table { width:100%; border-collapse:collapse; min-width:480px; font-size:.74rem; }
+        .dashboard-table th, .dashboard-table td { padding:10px; text-align:left; border-bottom:1px solid var(--border); }
+        .dashboard-table th { color:var(--muted); font-weight:600; }
+        .dashboard-table tr:last-child td { border-bottom:0; }
+        .status-hadir { color:var(--lime); }
+        .status-izin { color:#ffd166; }
+        .status-sakit { color:#8ec5ff; }
+        .status-alpa { color:var(--danger); }
 
         .history-head {
             display: flex;
@@ -287,10 +306,16 @@
     <div class="toast" id="toast"></div>
     <div class="dashboard-modal" id="dashboardModal" role="dialog" aria-modal="true" aria-labelledby="dashboardTitle">
         <div class="dashboard-panel">
-            <div class="dashboard-top"><h2 id="dashboardTitle">Dashboard Hari Ini</h2><button class="dashboard-close" type="button" onclick="closeDashboard()">Tutup</button></div>
-            <div class="dashboard-total" id="dashboardTotal">-<small>Memuat data kehadiran...</small></div>
-            <button class="dashboard-refresh" type="button" onclick="loadDashboard()">Refresh Data</button>
-            <ul class="history-list" id="dashboardList"></ul>
+            <div class="dashboard-top"><h2 id="dashboardTitle">Dashboard Siswa</h2><button class="dashboard-close" type="button" onclick="closeDashboard()">Tutup</button></div>
+            <div class="dashboard-filter"><input id="dashboardDate" type="date"><button class="dashboard-refresh" type="button" onclick="loadDashboard()">Refresh</button></div>
+            <div class="dashboard-stats">
+                <div class="dashboard-stat"><strong id="statTotal">0</strong><span>Total</span></div>
+                <div class="dashboard-stat"><strong id="statHadir">0</strong><span>Hadir</span></div>
+                <div class="dashboard-stat"><strong id="statIzin">0</strong><span>Izin</span></div>
+                <div class="dashboard-stat"><strong id="statAlpa">0</strong><span>Alpa</span></div>
+            </div>
+            <div class="dashboard-chart"><canvas id="attendanceChart"></canvas></div>
+            <div class="dashboard-table-wrap"><table class="dashboard-table"><thead><tr><th>Siswa</th><th>Guru</th><th>Kegiatan</th><th>Status</th></tr></thead><tbody id="dashboardTable"></tbody></table></div>
         </div>
     </div>
     <main>
@@ -318,7 +343,7 @@
         </div>
     </main>
     <script>
-        let scanner, scanning = false, delivered = false, toastTimer, cameras = [], activeCameraIndex = 0; const statusEl = document.getElementById('status'), retryButton = document.getElementById('retryButton'), historyList = document.getElementById('historyList'), scanCount = document.getElementById('scanCount'), toast = document.getElementById('toast'), dashboardModal = document.getElementById('dashboardModal'), dashboardTotal = document.getElementById('dashboardTotal'), dashboardList = document.getElementById('dashboardList'), backendUrl = 'https://script.google.com/macros/s/AKfycbxyqt4qTJ7-wNBPU5dK9PaQRlu6txl4l7NaaHbFkKRyntQrnByJCnW09PuY8UNeaEO7rA/exec', historyKey = 'absensi-ekstra-scan-history'; let scanHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        let scanner, scanning = false, delivered = false, toastTimer, cameras = [], activeCameraIndex = 0, attendanceChart; const statusEl = document.getElementById('status'), retryButton = document.getElementById('retryButton'), historyList = document.getElementById('historyList'), scanCount = document.getElementById('scanCount'), toast = document.getElementById('toast'), dashboardModal = document.getElementById('dashboardModal'), dashboardDate = document.getElementById('dashboardDate'), backendUrl = 'https://script.google.com/macros/s/AKfycbxyqt4qTJ7-wNBPU5dK9PaQRlu6txl4l7NaaHbFkKRyntQrnByJCnW09PuY8UNeaEO7rA/exec', historyKey = 'absensi-ekstra-scan-history'; let scanHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
         function setStatus(message, isError) { statusEl.textContent = message; statusEl.className = 'status' + (isError ? ' error' : '') } function notify(message, isError) { clearTimeout(toastTimer); toast.textContent = message; toast.className = 'toast show' + (isError ? ' error' : ''); toastTimer = setTimeout(() => toast.className = 'toast', 3200) } function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char])) } function getData(payload) { try { return JSON.parse(payload) } catch (error) { return {} } } function renderHistory() { scanCount.textContent = scanHistory.length; if (!scanHistory.length) { historyList.innerHTML = '<li class="history-empty">Belum ada data yang dikirim dari perangkat ini.</li>'; return } historyList.innerHTML = scanHistory.map(item => '<li class="history-item"><span class="history-icon">OK</span><div class="history-main"><div class="history-name">' + escapeHtml(item.name) + '</div><div class="history-detail">' + escapeHtml(item.role) + ' - Berhasil dikirim</div></div><span class="history-time">' + item.time + '</span></li>').join('') } function addToHistory(payload) { const data = getData(payload); scanHistory.unshift({ id: String(data.id || payload), name: data.nama || 'QR terbaca', role: data.jabatan || 'Peserta', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }); scanHistory = scanHistory.slice(0, 50); localStorage.setItem(historyKey, JSON.stringify(scanHistory)); renderHistory() }
         function enableContinuousFocus() {
             if (!scanner || typeof scanner.applyVideoConstraints !== 'function') return Promise.resolve();
@@ -334,10 +359,12 @@
                 .then(() => enableContinuousFocus());
         }
         function startScanner() { if (scanning || delivered) return; retryButton.style.display = 'none'; setStatus('Meminta akses kamera...'); Html5Qrcode.getCameras().then(foundCameras => { if (!foundCameras.length) throw new Error('Tidak ada kamera yang terdeteksi.'); cameras = foundCameras; const rearIndex = cameras.findIndex(camera => /back|rear|environment|belakang/i.test(camera.label || '')); activeCameraIndex = rearIndex >= 0 ? rearIndex : 0; return startCamera(); }).then(() => { scanning = true; setStatus('Kamera aktif - arahkan ke QR Code peserta.') }).catch(error => { setStatus('Kamera tidak dapat digunakan: ' + error, true); retryButton.style.display = 'block' }) }
-        function openDashboard() { dashboardModal.classList.add('show'); loadDashboard(); }
+        function openDashboard() { dashboardModal.classList.add('show'); if (!dashboardDate.value) dashboardDate.value = new Date().toISOString().slice(0, 10); loadDashboard(); }
         function closeDashboard() { dashboardModal.classList.remove('show'); }
-        function loadDashboard() { dashboardTotal.innerHTML = '-<small>Memuat data kehadiran...</small>'; dashboardList.innerHTML = ''; const old = document.getElementById('dashboardJsonp'); if (old) old.remove(); const script = document.createElement('script'); script.id = 'dashboardJsonp'; script.src = backendUrl + '?api=dashboard&callback=onDashboardData&_=' + Date.now(); script.onerror = () => { dashboardTotal.innerHTML = '-<small>Gagal memuat data dashboard.</small>'; }; document.body.appendChild(script); }
-        function onDashboardData(data) { dashboardTotal.innerHTML = (data.total || 0) + '<small>Peserta hadir hari ini</small>'; const records = data.records || []; dashboardList.innerHTML = records.length ? records.map(item => '<li class="history-item"><span class="history-icon">OK</span><div class="history-main"><div class="history-name">' + escapeHtml(item.name) + '</div><div class="history-detail">' + escapeHtml(item.desc || 'Hadir') + '</div></div><span class="history-time">' + escapeHtml(item.time) + '</span></li>').join('') : '<li class="dashboard-empty">Belum ada presensi hari ini.</li>'; }
+        function loadDashboard() { const old = document.getElementById('dashboardJsonp'); if (old) old.remove(); const script = document.createElement('script'); script.id = 'dashboardJsonp'; script.src = backendUrl + '?api=dashboard&date=' + encodeURIComponent(dashboardDate.value) + '&callback=onDashboardData&_=' + Date.now(); script.onerror = () => notify('Gagal memuat dashboard.', true); document.body.appendChild(script); }
+        function onDashboardData(data) { const stats = data.stats || {}; document.getElementById('statTotal').textContent = data.total || 0; document.getElementById('statHadir').textContent = stats.Hadir || 0; document.getElementById('statIzin').textContent = stats.Izin || 0; document.getElementById('statAlpa').textContent = stats.Alpa || 0; renderAttendanceChart(data); renderAttendanceTable(data.records || []); }
+        function renderAttendanceChart(data) { const context = document.getElementById('attendanceChart').getContext('2d'); if (attendanceChart) attendanceChart.destroy(); attendanceChart = new Chart(context, { type:'bar', data:{ labels:['Hadir','Izin','Sakit','Alpa'], datasets:[{ data:[data.stats.Hadir || 0,data.stats.Izin || 0,data.stats.Sakit || 0,data.stats.Alpa || 0], backgroundColor:['#c8f731','#ffd166','#8ec5ff','#ff8a8a'], borderRadius:8, borderSkipped:false }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ color:'#9a9aa9', precision:0 }, grid:{ color:'rgba(255,255,255,.07)' } }, x:{ ticks:{ color:'#fff' }, grid:{ display:false } } } } }); }
+        function renderAttendanceTable(records) { const table = document.getElementById('dashboardTable'); table.innerHTML = records.length ? records.map(item => '<tr><td>' + escapeHtml(item.siswa) + '<br><small>' + escapeHtml(item.kelas) + '</small></td><td>' + escapeHtml(item.guru) + '</td><td>' + escapeHtml(item.kegiatan) + '</td><td class="status-' + item.status.toLowerCase() + '">' + escapeHtml(item.status) + '</td></tr>').join('') : '<tr><td colspan="4" class="dashboard-empty">Belum ada absensi manual pada tanggal ini.</td></tr>'; }
         function onScanSuccess(decodedText) { if (delivered) return; const data = getData(decodedText), id = String(data.id || decodedText); if (scanHistory.some(item => item.id === id)) { notify((data.nama || 'Peserta ini') + ' sudah dipindai pada perangkat ini.', true); return } delivered = true; scanning = false; if (scanner) scanner.stop().catch(() => { }); setStatus('QR terbaca. Menyimpan presensi...'); fetch(backendUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'recordPresensi', payload: decodedText }) }).then(() => { addToHistory(decodedText); notify((data.nama || 'Peserta') + ' berhasil dikirim ke presensi.'); setStatus('Data berhasil dikirim. Siap scan peserta berikutnya.'); setTimeout(() => { delivered = false; startScanner() }, 1000) }).catch(() => { setStatus('Data gagal dikirim. Periksa koneksi internet lalu coba lagi.', true); notify('Data gagal dikirim. Silakan coba lagi.', true); delivered = false; retryButton.style.display = 'block' }) } renderHistory(); startScanner();
     </script>
 </body>

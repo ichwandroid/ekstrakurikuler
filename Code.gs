@@ -16,16 +16,49 @@ function doGet(e) {
     if (!/^[A-Za-z_$][0-9A-Za-z_$]{0,80}$/.test(callback)) {
       return ContentService.createTextOutput('Invalid callback.');
     }
-    const records = getTodayPresensi();
+    const date = String(e.parameter.date || '');
+    const dashboard = getStudentAttendanceDashboard(date);
     return ContentService.createTextOutput(callback + '(' + JSON.stringify({
-      total: records.length,
-      records: records
+      total: dashboard.total,
+      records: dashboard.records,
+      stats: dashboard.stats,
+      byTeacher: dashboard.byTeacher,
+      byActivity: dashboard.byActivity
     }) + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Aplikasi Presensi QR Code')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function getStudentAttendanceDashboard(date) {
+  const targetDate = date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME_STUDENT_ATTENDANCE);
+  const empty = { total: 0, records: [], stats: { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 }, byTeacher: [], byActivity: [] };
+  if (!sheet || sheet.getLastRow() < 2) return empty;
+
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues().filter(function(row) {
+    return String(row[1]).slice(0, 10) === targetDate;
+  });
+  const stats = { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 };
+  const teachers = {}, activities = {};
+  const records = rows.map(function(row) {
+    const status = String(row[8] || '');
+    if (stats[status] !== undefined) stats[status]++;
+    const teacher = String(row[3] || '-');
+    const activity = String(row[4] || '-');
+    teachers[teacher] = (teachers[teacher] || 0) + (status === 'Hadir' ? 1 : 0);
+    activities[activity] = (activities[activity] || 0) + (status === 'Hadir' ? 1 : 0);
+    return { waktu: row[0], guru: teacher, kegiatan: activity, siswa: String(row[6] || '-'), kelas: String(row[7] || '-'), status: status };
+  }).reverse();
+  return {
+    total: rows.length,
+    records: records.slice(0, 100),
+    stats: stats,
+    byTeacher: Object.keys(teachers).map(function(name) { return { name: name, hadir: teachers[name] }; }),
+    byActivity: Object.keys(activities).map(function(name) { return { name: name, hadir: activities[name] }; })
+  };
 }
 
 // Endpoint untuk scanner eksternal. Responsnya tidak dibaca oleh browser
@@ -63,6 +96,12 @@ function getUserList() {
         users.push({ id: id, nama: nama, jabatan: jabatan });
       }
     });
+    if (!users.length) {
+      data.forEach(function(row) {
+        if (row[0] && row[1]) users.push({ id: String(row[0]), nama: String(row[1]), jabatan: String(row[2] || 'Guru') });
+      });
+    }
+    Logger.log('Daftar user/guru dikirim: ' + users.length);
     return users;
   } catch (error) {
     Logger.log('Error di getUserList: ' + error.toString());
@@ -73,9 +112,9 @@ function getUserList() {
 function getTeacherList() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME_USER);
   if (!sheet || sheet.getLastRow() < 2) return [];
-  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues()
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues()
     .filter(function(row) { return row[0] && row[1]; })
-    .map(function(row) { return { id: String(row[0]), nama: String(row[1]) }; });
+    .map(function(row) { return { id: String(row[0]), nama: String(row[1]), jabatan: String(row[2] || 'Guru'), status: String(row[3] || '') }; });
 }
 
 function getStudentsByTeacher(teacherId) {
@@ -147,7 +186,7 @@ function recordPresensi(qrPayload) {
     const validityMs = 5 * 60 * 1000;
     if (isNaN(qrTime)) return { success: false, message: 'Timestamp pada QR Code tidak valid.' };
     if ((now - qrTime) > validityMs) return { success: false, message: 'QR Code sudah kedaluwarsa. Minta user untuk generate ulang.' };
-    const userList = getUserList();
+    const userList = getTeacherList();
     const userValid = userList.some(function(u) { return u.id === id; });
     if (!userValid) return { success: false, message: "ID User '" + id + "' tidak ditemukan atau tidak aktif." };
     const ss = SpreadsheetApp.getActiveSpreadsheet();
