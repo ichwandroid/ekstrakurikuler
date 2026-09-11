@@ -334,6 +334,18 @@
       margin-bottom: 16px;
     }
     .qr-user-name { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .qr-user-id {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--lime);
+      background: rgba(200,247,49,0.1);
+      border: 1px solid rgba(200,247,49,0.25);
+      border-radius: 8px;
+      padding: 3px 12px;
+      margin-bottom: 6px;
+    }
     .qr-user-role { font-size: 0.82rem; color: var(--muted); margin-bottom: 24px; }
     .qr-box {
       display: inline-block;
@@ -716,6 +728,7 @@
       <div class="qr-card" id="qrCard">
         <div class="qr-tag">QR Code Presensi</div>
         <div class="qr-user-name" id="qrName">—</div>
+        <div class="qr-user-id" id="qrId">—</div>
         <div class="qr-user-role" id="qrRole">—</div>
         <div class="qr-box">
           <div id="qrcode"></div>
@@ -996,6 +1009,7 @@
       });
 
       document.getElementById('qrName').textContent  = selectedUser.nama;
+      document.getElementById('qrId').textContent    = 'ID: ' + selectedUser.id;
       document.getElementById('qrRole').textContent  = selectedUser.jabatan || 'Guru';
 
       const qrDiv = document.getElementById('qrcode');

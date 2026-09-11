@@ -26,6 +26,14 @@ function doGet(e) {
       byActivity: dashboard.byActivity
     }) + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
+  if (e && e.parameter && e.parameter.api === 'users') {
+    const callback = String(e.parameter.callback || '');
+    if (!/^[A-Za-z_$][0-9A-Za-z_$]{0,80}$/.test(callback)) {
+      return ContentService.createTextOutput('Invalid callback.');
+    }
+    const users = getTeacherList();
+    return ContentService.createTextOutput(callback + '(' + JSON.stringify(users) + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Aplikasi Presensi QR Code')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
@@ -178,17 +186,17 @@ function recordPresensi(qrPayload) {
       return { success: false, message: 'QR Code tidak valid atau tidak dapat dibaca.' };
     }
     const { id, nama, jabatan, token, timestamp } = data;
-    if (!id || !nama || !token || !timestamp) {
-      return { success: false, message: 'Data QR Code tidak lengkap.' };
+    if (!id || !token || !timestamp) {
+      return { success: false, message: 'Data presensi tidak lengkap.' };
     }
     const now = new Date().getTime();
     const qrTime = new Date(timestamp).getTime();
     const validityMs = 5 * 60 * 1000;
-    if (isNaN(qrTime)) return { success: false, message: 'Timestamp pada QR Code tidak valid.' };
+    if (isNaN(qrTime)) return { success: false, message: 'Timestamp presensi tidak valid.' };
     if ((now - qrTime) > validityMs) return { success: false, message: 'QR Code sudah kedaluwarsa. Minta user untuk generate ulang.' };
     const userList = getTeacherList();
-    const userValid = userList.some(function(u) { return u.id === id; });
-    if (!userValid) return { success: false, message: "ID User '" + id + "' tidak ditemukan atau tidak aktif." };
+    const targetUser = userList.find(function(u) { return String(u.id).trim().toUpperCase() === String(id).trim().toUpperCase(); });
+    if (!targetUser) return { success: false, message: "ID User '" + id + "' tidak ditemukan atau tidak aktif." };
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const logSheet = ss.getSheetByName(SHEET_NAME_LOG);
     if (!logSheet) throw new Error("Sheet '" + SHEET_NAME_LOG + "' tidak ditemukan!");
@@ -197,13 +205,15 @@ function recordPresensi(qrPayload) {
       ? logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 2).getValues() : [];
     const sudahHadir = logData.some(function(row) {
       const logDate = Utilities.formatDate(new Date(row[0]), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      return row[1] === id && logDate === today;
+      return String(row[1]).trim().toUpperCase() === String(id).trim().toUpperCase() && logDate === today;
     });
-    if (sudahHadir) return { success: false, message: nama + ' sudah tercatat hadir hari ini.' };
+    const resolvedNama = targetUser.nama || nama || id;
+    if (sudahHadir) return { success: false, message: resolvedNama + ' sudah tercatat hadir hari ini.' };
     const scanTime = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-    logSheet.appendRow([scanTime, id, nama, 'Hadir', 'Scan QR Admin']);
-    Logger.log('Presensi berhasil: ' + id + ' - ' + nama + ' pada ' + scanTime);
-    return { success: true, message: 'Presensi berhasil dicatat!', data: { nama: nama, jabatan: jabatan || '-', waktu: scanTime, status: 'Hadir' } };
+    const keterangan = (token && String(token).indexOf('MANUAL') === 0) ? 'Input Manual ID' : 'Scan QR Admin';
+    logSheet.appendRow([scanTime, targetUser.id, resolvedNama, 'Hadir', keterangan]);
+    Logger.log('Presensi berhasil: ' + targetUser.id + ' - ' + resolvedNama + ' (' + keterangan + ') pada ' + scanTime);
+    return { success: true, message: 'Presensi berhasil dicatat!', data: { id: targetUser.id, nama: resolvedNama, jabatan: targetUser.jabatan || jabatan || '-', waktu: scanTime, status: 'Hadir', keterangan: keterangan } };
   } catch (error) {
     Logger.log('Error di recordPresensi: ' + error.toString());
     return { success: false, message: 'Terjadi kesalahan server: ' + error.toString() };
